@@ -9,6 +9,8 @@ const MAX_DOCUMENT: u64 = 16 * 1024 * 1024;
 pub struct Snapshot { pub content: String, pub revision: String }
 #[derive(Serialize)]
 pub struct Entry { pub path: String, pub name: String, pub directory: bool, pub children: Vec<Entry> }
+#[derive(Debug, Serialize)]
+pub struct ContentMatch { pub path: String, pub name: String, pub line: usize, pub text: String }
 
 pub struct LocalFilesystemProvider { pub root: PathBuf }
 
@@ -114,10 +116,47 @@ impl LocalFilesystemProvider {
         if target.exists() { return Err("Já existe um item com esse nome.".into()); }
         fs::rename(source, target).map_err(|e| e.to_string())
     }
+    // Content search reads every document, so it follows the same listing rules (no VCS or
+    // dependency folders, no links) and the same per-file limits as `read`.
+    pub fn search(&self, query: &str, limit: usize) -> Result<Vec<ContentMatch>> {
+        let needle = query.trim().to_lowercase();
+        if needle.chars().count() < 2 { return Err("Digite ao menos 2 caracteres para buscar no conteúdo.".into()); }
+        let mut files = vec![];
+        collect_documents(self.list()?, &mut files);
+        let mut matches: Vec<ContentMatch> = vec![];
+        for (path, name) in files {
+            let Ok(document) = self.read(&path) else { continue };
+            for (index, line) in document.content.lines().enumerate() {
+                if line.to_lowercase().contains(&needle) {
+                    matches.push(ContentMatch { path: path.clone(), name: name.clone(), line: index + 1, text: preview(line, &needle) });
+                    if matches.len() >= limit { return Ok(matches) }
+                }
+            }
+        }
+        Ok(matches)
+    }
     pub fn delete(&self, path: &str) -> Result<()> {
         let target = self.resolve(path, true)?;
         if target.is_dir() { fs::remove_dir_all(target) } else { self.markdown(path, true)?; fs::remove_file(target) }.map_err(|e| e.to_string())
     }
+}
+fn collect_documents(entries: Vec<Entry>, files: &mut Vec<(String, String)>) {
+    for entry in entries {
+        if entry.directory { collect_documents(entry.children, files) } else { files.push((entry.path, entry.name)) }
+    }
+}
+// Long lines are cut around the match so the preview shows why the line was returned.
+fn preview(line: &str, needle: &str) -> String {
+    const WIDTH: usize = 180;
+    let trimmed = line.trim();
+    if trimmed.chars().count() <= WIDTH { return trimmed.to_string() }
+    let lowered = trimmed.to_lowercase();
+    let at = lowered.find(needle).map(|byte| lowered[..byte].chars().count()).unwrap_or(0);
+    let skip = at.saturating_sub(WIDTH / 3);
+    let mut text: String = trimmed.chars().skip(skip).take(WIDTH).collect();
+    if skip > 0 { text.insert(0, '…') }
+    if trimmed.chars().count() > skip + WIDTH { text.push('…') }
+    text
 }
 fn snapshot(content: String) -> Snapshot { let revision = format!("{:x}", Sha256::digest(content.as_bytes())); Snapshot { content, revision } }
 
@@ -151,6 +190,27 @@ mod tests {
         let (d, p) = vault(); fs::write(d.path().join("outside.MD"), "hello").unwrap();
         assert_eq!(p.list().unwrap()[0].name, "outside.MD"); fs::remove_file(d.path().join("outside.MD")).unwrap();
         assert!(p.list().unwrap().is_empty());
+    }
+    #[test] fn content_search_reports_lines_with_case_insensitive_preview() {
+        let (_d, p) = vault(); p.mkdir("Estudos").unwrap();
+        p.create("Estudos/nota.md", "primeira linha\nSegunda LINHA").unwrap(); p.create("outra.md", "nada aqui").unwrap();
+        let hits = p.search("linha", 10).unwrap();
+        assert_eq!(hits.len(), 2);
+        assert_eq!((hits[0].path.as_str(), hits[0].name.as_str(), hits[0].line), ("Estudos/nota.md", "nota.md", 1));
+        assert_eq!(hits[1].line, 2); assert_eq!(hits[1].text, "Segunda LINHA");
+        assert!(p.search(" a ", 10).unwrap_err().contains("2 caracteres"));
+        assert!(p.search("zzz", 10).unwrap().is_empty());
+    }
+    #[test] fn content_search_skips_ignored_folders_and_honors_limit() {
+        let (d, p) = vault(); fs::create_dir_all(d.path().join("node_modules")).unwrap();
+        fs::write(d.path().join("node_modules/dep.md"), "alvo").unwrap(); p.create("a.md", "alvo\nalvo\nalvo").unwrap();
+        assert_eq!(p.search("alvo", 2).unwrap().len(), 2); assert_eq!(p.search("alvo", 10).unwrap().len(), 3);
+    }
+    #[test] fn preview_windows_long_lines_around_the_match() {
+        let line = format!("{}alvo{}", "a".repeat(400), "b".repeat(400));
+        let text = preview(&line, "alvo");
+        assert!(text.starts_with('…') && text.ends_with('…') && text.contains("alvo"));
+        assert!(text.chars().count() <= 182);
     }
     #[cfg(unix)]
     #[test] fn rejects_symlinks() {

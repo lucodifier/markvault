@@ -1,10 +1,12 @@
 export interface FileEntry { path: string; name: string; directory: boolean; children: FileEntry[] }
 export interface Workspace { name: string; path: string }
 export interface DocumentSnapshot { content: string; revision: string }
+export interface ContentMatch { path: string; name: string; line: number; text: string }
 export interface StorageProvider {
   openWorkspace(): Promise<Workspace | null>
   restoreWorkspace(): Promise<Workspace | null>
   listFiles(): Promise<FileEntry[]>
+  searchContent(query: string): Promise<ContentMatch[]>
   readFile(path: string): Promise<DocumentSnapshot>
   writeFile(path: string, content: string, expectedRevision: string): Promise<DocumentSnapshot>
   createFile(path: string, content?: string): Promise<void>

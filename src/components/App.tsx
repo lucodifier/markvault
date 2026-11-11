@@ -1,10 +1,11 @@
 import { useEffect, useState, type CSSProperties, type PointerEvent } from 'react'
-import { BookOpen, Check, ChevronRight, Code2, Columns2, FilePlus2, FileText, FolderOpen, FolderPlus, Library, PanelLeftClose, PanelLeftOpen, RefreshCw, Save, Search, X } from 'lucide-react'
+import { BookOpen, Check, ChevronRight, Code2, Columns2, FilePlus2, FileText, FolderOpen, FolderPlus, Library, PanelLeftClose, PanelLeftOpen, RefreshCw, Save, Search, TextSearch, X } from 'lucide-react'
 import { useWorkspace } from '../stores/workspaceStore'
 import { useWorkspaceLifecycle } from '../hooks/useWorkspaceLifecycle'
 import { FileTree, type FileAction } from './FileTree'
 import { ActionDialog } from './ActionDialog'
 import { SearchDialog } from './SearchDialog'
+import { ContentSearchDialog } from './ContentSearchDialog'
 import { MarkdownEditor } from './MarkdownEditor'
 import { MarkdownPreview } from './MarkdownPreview'
 
@@ -13,6 +14,7 @@ export function App() {
   const s = useWorkspace()
   const [action, setAction] = useState<FileAction | null>(null)
   const [search, setSearch] = useState(false)
+  const [content, setContent] = useState(false)
   const [sidebar, setSidebar] = useState(true)
   const [width, setWidth] = useState(() => { try { return Number(localStorage.getItem('markvault:sidebar')) || 270 } catch { return 270 } })
   const d = s.document
@@ -22,6 +24,7 @@ export function App() {
     const keydown = (event: KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey)) return
       if (event.key.toLowerCase() === 's') { event.preventDefault(); void useWorkspace.getState().save() }
+      if (event.shiftKey && event.key.toLowerCase() === 'f') { event.preventDefault(); setContent(true) }
       if (event.key.toLowerCase() === 'p') { event.preventDefault(); setSearch(true) }
       if (event.key.toLowerCase() === 'n') { event.preventDefault(); if (useWorkspace.getState().workspace) setAction({ kind: 'file', path: '' }) }
       if (event.key === '\\') { event.preventDefault(); setSidebar(v => !v) }
@@ -37,6 +40,7 @@ export function App() {
       <div className="brand"><span className="brand-mark"><Library size={21} /></span><strong>MarkVault</strong><span className="version">LOCAL</span></div>
       <button className="workspace-picker" onClick={() => void s.openWorkspace()} disabled={s.busy} title={s.workspace?.path || 'Selecionar pasta local'}><FolderOpen size={18} /><span><strong>{s.workspace?.name || 'Abrir workspace'}</strong><small>{s.workspace ? 'Trocar pasta local' : 'Escolha sua pasta de notas'}</small></span><ChevronRight size={15} /></button>
       <button className="find-button" onClick={() => setSearch(true)} disabled={!s.workspace}><Search size={16} /><span>Localizar documento</span><kbd>Ctrl P</kbd></button>
+      <button className="find-button content-find" onClick={() => setContent(true)} disabled={!s.workspace}><TextSearch size={16} /><span>Buscar no conteúdo</span><kbd>Ctrl ⇧ F</kbd></button>
       <div className="explorer-heading"><span>EXPLORADOR</span><div><button className="icon-button" aria-label="Novo documento" title="Novo documento (Ctrl+N)" disabled={!s.workspace || s.busy} onClick={() => setAction({ kind: 'file', path: '' })}><FilePlus2 size={16} /></button><button className="icon-button" aria-label="Nova pasta" title="Nova pasta" disabled={!s.workspace || s.busy} onClick={() => setAction({ kind: 'directory', path: '' })}><FolderPlus size={16} /></button><button className="icon-button" aria-label="Atualizar arquivos" title="Atualizar arquivos" disabled={!s.workspace || s.busy} onClick={() => void s.refresh()}><RefreshCw size={14} /></button></div></div>
       <nav className="tree-scroll">{s.files.length ? <FileTree entries={s.files} root={s.workspace?.path || ''} active={d?.path} disabled={s.busy} onOpen={path => void s.openDocument(path)} onAction={setAction} /> : <p className="sidebar-empty">{s.workspace ? 'Sua pasta está pronta. Crie seu primeiro documento.' : 'Seus documentos, nas suas pastas.'}</p>}</nav>
       <div className="sidebar-footer"><span className="status-dot" />Arquivos locais · UTF-8<span title="Sem sincronização ou conta">Privado</span></div>
@@ -63,5 +67,6 @@ export function App() {
     </main>
     {action && <ActionDialog key={`${action.kind}:${action.path}`} action={action} onClose={() => setAction(null)} />}
     {search && <SearchDialog onClose={() => setSearch(false)} />}
+    {content && <ContentSearchDialog onClose={() => setContent(false)} />}
   </div>
 }

@@ -12,6 +12,7 @@ class TestProvider implements StorageProvider {
   openWorkspace = async () => this.workspace
   restoreWorkspace = async () => this.workspace
   listFiles = async (): Promise<FileEntry[]> => [...this.data.keys()].map(path => ({ name: path, path, directory: false, children: [] }))
+  searchContent = async () => []
   readFile = async (path: string): Promise<DocumentSnapshot> => {
     if (this.failures.read) throw new Error('Leitura negada')
     if (!this.data.has(path)) throw new Error('Arquivo ausente')

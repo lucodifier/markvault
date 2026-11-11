@@ -6,7 +6,8 @@ use std::{fs, path::PathBuf, sync::Mutex};
 use tauri::{Emitter, Manager, State};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
-use storage::{Entry, LocalFilesystemProvider, Result, Snapshot};
+use storage::{ContentMatch, Entry, LocalFilesystemProvider, Result, Snapshot};
+const MAX_MATCHES: usize = 200;
 
 struct Vault { provider: LocalFilesystemProvider, _watcher: notify::RecommendedWatcher }
 #[derive(Default)]
@@ -81,6 +82,12 @@ fn create_directory(state: State<AppState>, path: String) -> Result<()> { with(&
 fn rename_file(state: State<AppState>, path: String, destination: String) -> Result<()> { with(&state, |p| p.rename(&path, &destination)) }
 #[tauri::command]
 fn delete_file(state: State<AppState>, path: String) -> Result<()> { with(&state, |p| p.delete(&path)) }
+// Scanning a vault blocks, so run it off the IPC thread and keep the UI responsive.
+#[tauri::command]
+async fn search_content(state: State<'_, AppState>, query: String) -> Result<Vec<ContentMatch>> {
+    let provider = LocalFilesystemProvider { root: with(&state, |p| Ok(p.root.clone()))? };
+    tauri::async_runtime::spawn_blocking(move || provider.search(&query, MAX_MATCHES)).await.map_err(|e| e.to_string())?
+}
 #[tauri::command]
 fn read_asset(state: State<AppState>, path: String) -> Result<String> {
     with(&state, |p| {
@@ -112,6 +119,6 @@ fn open_attachment(app: tauri::AppHandle, state: State<AppState>, path: String) 
 pub fn run() {
     tauri::Builder::default().manage(AppState::default())
         .plugin(tauri_plugin_dialog::init()).plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![open_workspace, restore_workspace, list_files, read_file, write_file, create_file, create_directory, rename_file, delete_file, read_asset, open_external, open_attachment])
+        .invoke_handler(tauri::generate_handler![open_workspace, restore_workspace, list_files, read_file, write_file, create_file, create_directory, rename_file, delete_file, read_asset, search_content, open_external, open_attachment])
         .run(tauri::generate_context!()).expect("Falha ao iniciar MarkVault");
 }
