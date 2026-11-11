@@ -8,7 +8,9 @@ interface Props { entries: FileEntry[]; root: string; active?: string; disabled:
 
 /** Absolute Windows path of a workspace-relative entry. */
 function absolutePath(root: string, path: string) {
-  return `${root.replace(/[\\/]+$/, '')}\\${path.split('/').join('\\')}`
+  // Windows extended-length paths (`\\?\C:\...`) are noise when pasted elsewhere.
+  const plain = root.replace(/^\\\\\?\\UNC\\/i, '\\\\').replace(/^\\\\\?\\/, '').replace(/[\\/]+$/, '')
+  return `${plain}\\${path.split('/').join('\\')}`
 }
 
 /** Markdown link to an entry, resolved from the workspace root. */
