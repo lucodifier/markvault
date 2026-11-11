@@ -7,8 +7,15 @@ export type FileAction = { kind: 'file' | 'directory' | 'rename' | 'delete' | 'c
 interface Props { entries: FileEntry[]; root: string; active?: string; disabled: boolean; onOpen(path: string): void; onAction(action: FileAction): void }
 
 /** Absolute Windows path of a workspace-relative entry. */
-export function absolutePath(root: string, path: string) {
+function absolutePath(root: string, path: string) {
   return `${root.replace(/[\\/]+$/, '')}\\${path.split('/').join('\\')}`
+}
+
+/** Markdown link to an entry, resolved from the workspace root. */
+function markdownLink(name: string, path: string) {
+  // Parentheses must be percent-encoded too, or `(1)` closes the link target early.
+  const segment = (part: string) => encodeURIComponent(part).replace(/\(/g, '%28').replace(/\)/g, '%29')
+  return `[${name.replace(/\.md$/i, '')}](${path.split('/').map(segment).join('/')})`
 }
 
 async function copyText(text: string) {
@@ -33,14 +40,13 @@ export function FileTree(props: Props) {
 function TreeItem({ entry, ...props }: Props & { entry: FileEntry }) {
   const [expanded, setExpanded] = useState(true)
   const [menu, setMenu] = useState(false)
-  const copyPath = async () => {
+  const copy = async (text: string) => {
     setMenu(false)
-    const absolute = absolutePath(props.root, entry.path)
     try {
-      await copyText(absolute)
-      useWorkspace.setState({ notice: `Caminho copiado: ${absolute}` })
+      await copyText(text)
+      useWorkspace.setState({ notice: `Copiado: ${text}` })
     } catch {
-      useWorkspace.setState({ error: 'Não foi possível copiar o caminho para a área de transferência.' })
+      useWorkspace.setState({ error: 'Não foi possível copiar para a área de transferência.' })
     }
   }
   return <li>
@@ -52,7 +58,9 @@ function TreeItem({ entry, ...props }: Props & { entry: FileEntry }) {
       <button className="icon-button more" title={`Ações de ${entry.name}`} aria-label={`Ações de ${entry.name}`} aria-expanded={menu} onClick={() => setMenu(!menu)} disabled={props.disabled}><MoreHorizontal size={16} /></button>
     </div>
     {menu && <div className="file-actions" role="menu">
-      <button role="menuitem" onClick={() => void copyPath()}>Copiar caminho</button>
+      <button role="menuitem" onClick={() => void copy(absolutePath(props.root, entry.path))}>Copiar caminho</button>
+      <button role="menuitem" onClick={() => void copy(entry.path)}>Copiar caminho relativo</button>
+      {!entry.directory && <button role="menuitem" onClick={() => void copy(markdownLink(entry.name, entry.path))}>Copiar link Markdown</button>}
       {entry.directory && <><button role="menuitem" onClick={() => { setMenu(false); props.onAction({ kind: 'file', path: entry.path }) }}>Novo documento</button><button role="menuitem" onClick={() => { setMenu(false); props.onAction({ kind: 'directory', path: entry.path }) }}>Nova pasta</button></>}
       <button role="menuitem" onClick={() => { setMenu(false); props.onAction({ kind: 'rename', path: entry.path, directory: entry.directory }) }}>Renomear</button>
       <button role="menuitem" className="danger-text" onClick={() => { setMenu(false); props.onAction({ kind: 'delete', path: entry.path, directory: entry.directory }) }}>Excluir…</button>

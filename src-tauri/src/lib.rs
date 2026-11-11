@@ -14,6 +14,13 @@ struct AppState(Mutex<Option<Vault>>);
 #[derive(Serialize)]
 struct Workspace { name: String, path: String }
 
+// `canonicalize` yields extended-length paths (`\\?\C:\...`); users copy this path into
+// terminals, Explorer and chat prompts, so expose the plain Windows form instead.
+fn display_path(path: &PathBuf) -> String {
+    let text = path.to_string_lossy();
+    if let Some(rest) = text.strip_prefix(r"\\?\UNC\") { return format!(r"\\{rest}") }
+    text.strip_prefix(r"\\?\").unwrap_or(&text).to_string()
+}
 fn activate(app: &tauri::AppHandle, state: &AppState, path: PathBuf) -> Result<Workspace> {
     let provider = LocalFilesystemProvider::new(&path)?;
     let root = provider.root.clone();
@@ -26,7 +33,7 @@ fn activate(app: &tauri::AppHandle, state: &AppState, path: PathBuf) -> Result<W
         }
     }).map_err(|e| e.to_string())?;
     watcher.watch(&root, RecursiveMode::Recursive).map_err(|e| e.to_string())?;
-    let workspace = Workspace { name: root.file_name().unwrap_or(root.as_os_str()).to_string_lossy().into(), path: root.to_string_lossy().into() };
+    let workspace = Workspace { name: root.file_name().unwrap_or(root.as_os_str()).to_string_lossy().into(), path: display_path(&root) };
     *state.0.lock().map_err(|e| e.to_string())? = Some(Vault { provider, _watcher: watcher });
     Ok(workspace)
 }

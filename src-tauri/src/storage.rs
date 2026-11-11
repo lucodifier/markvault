@@ -5,7 +5,7 @@ use std::{fs, io::Write, path::{Component, Path, PathBuf}};
 pub type Result<T> = std::result::Result<T, String>;
 const MAX_DOCUMENT: u64 = 16 * 1024 * 1024;
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Snapshot { pub content: String, pub revision: String }
 #[derive(Serialize)]
 pub struct Entry { pub path: String, pub name: String, pub directory: bool, pub children: Vec<Entry> }
