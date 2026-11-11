@@ -1,0 +1,4 @@
+{
+  "identifier": "main", "description": "Eventos e fechamento da janela principal; arquivos somente por comandos validados.",
+  "windows": ["main"], "permissions": ["core:event:default", "core:window:allow-destroy"]
+}
