@@ -67,6 +67,7 @@ function TreeItem({ entry, ...props }: Props & { entry: FileEntry }) {
       <button role="menuitem" onClick={() => { setMenu(false); props.onAction({ kind: 'rename', path: entry.path, directory: entry.directory }) }}>Renomear</button>
       <button role="menuitem" className="danger-text" onClick={() => { setMenu(false); props.onAction({ kind: 'delete', path: entry.path, directory: entry.directory }) }}>Excluir…</button>
     </div>}
-    {entry.directory && expanded && <FileTree {...props} entries={entry.children} />}
+    {/* Keep children mounted so their own expanded state survives collapsing the parent. */}
+    {entry.directory && <div style={expanded ? undefined : { display: 'none' }}><FileTree {...props} entries={entry.children} /></div>}
   </li>
 }
