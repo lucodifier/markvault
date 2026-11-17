@@ -1,20 +1,17 @@
 # Validação da implementação inicial
 
-## Resultado observado nesta sessão
+## Resultado observado (16/11/2026)
 
 | Verificação | Resultado |
 | --- | --- |
-| `node scripts/check-core.mjs` | PASS: confinamento de links relativos, Unicode, identificação Markdown, isolamento e recuperação de rascunhos, cache corrompido |
-| `npm install` | Bloqueado: conexões com `registry.npmjs.org` retornaram `EACCES` |
-| `npm install --offline` | Bloqueado: `ENOTCACHED` para dependências necessárias |
-| `npm run lint` | Não iniciou: `eslint` não instalado |
-| `npm test` | Não iniciou: `vitest` não instalado |
-| `npm run build` | Não iniciou: `tsc` não instalado |
-| `cargo test --manifest-path src-tauri/Cargo.toml` | Não iniciou: Cargo não encontrado |
-| Executável/instalador Windows | Não gerado; depende da instalação e compilação acima |
-| Inspeção visual e operação real da janela Windows | Pendente; não foi possível iniciar o aplicativo |
+| `npm run lint` | PASS (zero avisos) |
+| `npm test` | PASS: 15 testes em 3 arquivos |
+| `npm run build` | PASS |
+| `npm run test:rust` | PASS: 8 testes |
+| `npm run desktop:build` | PASS: instalador NSIS `MarkVault_0.1.0_x64-setup.exe` (1,87 MiB) |
+| Operação real da janela Windows | Executado e testado manualmente pelo autor; funcional |
 
-Os checks Node exercitam somente funções puras, não provam funcionamento de React, Zustand, watcher nativo ou Tauri. A presença de testes no código não significa que eles foram executados. Não há conclusão de aceite do MVP nesta entrega.
+O roteiro manual abaixo continua sendo a referência para regressões.
 
 ## Testes escritos
 

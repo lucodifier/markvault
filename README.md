@@ -1,95 +1,96 @@
+<div align="center">
+
+<img src="src-tauri/icons/icon.png" width="96" alt="MarkVault">
+
 # MarkVault
 
-Aplicativo desktop de conhecimento pessoal baseado em arquivos Markdown locais. O conteúdo permanece em arquivos `.md` UTF-8; não há banco de dados de documentos, autenticação ou sincronização.
+**Seu cofre de conhecimento em arquivos Markdown. Local, rápido e sem lock-in.**
 
-Para retomar o desenvolvimento, consulte [o registro da versão 0.1.0 e próximos passos](docs/CONTINUIDADE.md).
+[![Release](https://img.shields.io/github/v/release/lucodifier/markvault?color=a9bf9e&label=vers%C3%A3o)](https://github.com/lucodifier/markvault/releases/latest)
+![Plataforma](https://img.shields.io/badge/plataforma-Windows-1c2026)
+![Tauri](https://img.shields.io/badge/Tauri-2-24C8DB)
+![React](https://img.shields.io/badge/React-18-61DAFB)
 
-**Estado desta entrega:** implementação inicial criada; validação completa pendente. O ambiente de desenvolvimento desta sessão bloqueou o registro npm com `EACCES`, não tinha as dependências em cache e não disponibilizou Rust/Cargo. Portanto, o aplicativo e o instalador Windows ainda não foram compilados nem executados. Veja [VALIDATION.md](docs/VALIDATION.md).
+[**⬇ Baixar**](https://github.com/lucodifier/markvault/releases/latest) · [**Site do projeto**](https://lucodifier.github.io/markvault/) · [Documentação](docs/CONTINUIDADE.md)
 
-## Instalar e executar no Windows
+</div>
 
-Pré-requisitos:
+---
 
-- Node.js 22 LTS ou posterior e npm.
-- Rust estável com toolchain MSVC (`rustup`, `cargo`, `rustc` no PATH).
-- Visual Studio Build Tools com **Desktop development with C++** e Windows SDK.
-- Microsoft Edge WebView2 Runtime.
-- Acesso aos registros npm e crates.io para a primeira instalação.
+MarkVault é um aplicativo desktop que transforma uma pasta comum de arquivos `.md` em um cofre de notas. Não há banco de dados, conta, nuvem ou formato proprietário: se o aplicativo sumir amanhã, você ainda tem uma pasta de texto puro legível por qualquer editor.
 
-No PowerShell, dentro de MarkVault:
+## Recursos
+
+- **Pasta como cofre:** abra qualquer pasta local; árvore com criar, renomear e excluir (com confirmação) e sidebar redimensionável.
+- **Editor com 4 modos:** CodeMirror 6 com realce Markdown e números de linha, em modo **Markdown**, **Dividido**, **Preview** ou **Leitura**.
+- **Busca:** por nome/caminho (ignora acentos, ordena por relevância) e **no conteúdo** das notas, com resultados por linha.
+- **Salvamento seguro:** autosave em 700 ms, escrita atômica com verificação de revisão SHA-256 e rascunhos de emergência para recuperação.
+- **Alterações externas:** watcher nativo atualiza árvore e documento; conflitos nunca sobrescrevem em silêncio.
+- **Markdown completo:** tabelas GFM, tarefas, blocos de código, imagens locais/HTTPS e links relativos entre notas.
+- **Produtividade:** copiar caminho absoluto, relativo ou link Markdown pelo menu de contexto.
+- **Segurança:** caminhos confinados à pasta, sem symlinks/junctions, HTML arbitrário não executa, anexos só de tipos permitidos.
+
+### Atalhos
+
+| Atalho | Ação |
+| --- | --- |
+| `Ctrl+P` | Abrir nota por nome/caminho |
+| `Ctrl+Shift+F` | Buscar no conteúdo |
+| `Ctrl+N` | Nova nota |
+| `Ctrl+S` | Salvar agora |
+| `Ctrl+\` | Mostrar/ocultar o explorador |
+
+## Instalação (Windows)
+
+1. Baixe `MarkVault_0.1.0_x64-setup.exe` na [página de releases](https://github.com/lucodifier/markvault/releases/latest).
+2. Execute o instalador. Ele ainda **não é assinado**, então o SmartScreen pode avisar: clique em *Mais informações → Executar assim mesmo*.
+3. Abra o MarkVault, clique em **Abrir pasta local** e escolha sua pasta de notas.
+
+## Sincronizar entre máquinas
+
+O cofre é só uma pasta. Crie-a dentro do **Google Drive** (ou OneDrive, Dropbox, Syncthing) e seus documentos e anexos ficam sincronizados. O watcher do MarkVault recarrega o que chegar de fora.
+
+## Como funcionam os conflitos
+
+Quando há texto local pendente e uma versão diferente no disco, o autosave é interrompido e você escolhe: usar a versão do disco, substituir o disco pelo seu texto (a revisão é conferida de novo antes de gravar) ou salvar uma cópia. Se o arquivo for removido, o texto continua disponível para salvar em outro arquivo. Falhas de escrita bloqueiam a troca de documento e o fechamento normal da janela para permitir a recuperação.
+
+Os rascunhos de emergência ficam no armazenamento local da webview, separados por workspace e caminho, e não substituem backup nem histórico.
+
+## Compilar a partir do código
+
+Pré-requisitos: Node.js 22+, Rust estável (toolchain MSVC), Visual Studio Build Tools com *Desktop development with C++* e WebView2 Runtime.
 
 ```powershell
 npm install
-npm run app
+npm run app            # desenvolvimento (Vite + Tauri)
+npm run desktop:build  # executável e instalador NSIS
 ```
 
-A primeira compilação Rust pode levar alguns minutos. `npm run app` inicia Vite e o aplicativo Tauri. `npm run dev` abre apenas o frontend: acesso a arquivos exige o aplicativo desktop; não existe backend simulado no navegador.
+O executável fica em `src-tauri/target/release/markvault.exe` e o instalador em `src-tauri/target/release/bundle/nsis/`.
 
-O lockfile npm e o Cargo.lock deverão ser gerados e versionados após a primeira resolução bem-sucedida. Não foram inventados lockfiles sem instalar as dependências.
-
-## Usar
-
-1. Clique em **Abrir pasta local** e autorize uma pasta no seletor nativo.
-2. Navegue na árvore e abra um `.md`, ou crie um documento pelo ícone de nova nota.
-3. Edite com realce Markdown, números de linha e desfazer/refazer.
-4. Alterne entre **Markdown**, **Dividido**, **Preview** e **Leitura**.
-5. O salvamento ocorre após 700 ms sem edição. `Ctrl+S` salva imediatamente.
-6. Use as ações `…` de cada item para criar filhos, renomear ou excluir. A exclusão exige confirmação e é permanente; excluir uma pasta remove também seus anexos.
-
-`Ctrl+P` localiza documentos pelo nome/caminho, `Ctrl+N` cria uma nota e `Ctrl+\` alterna o explorador. A largura da sidebar pode ser ajustada arrastando sua borda; o separador também aceita as setas do teclado.
-
-A última pasta e o último documento são restaurados na próxima abertura. Rascunhos de emergência ficam no armazenamento local da webview, separados por workspace e caminho, e são removidos após salvar. Eles não substituem os arquivos Markdown e não constituem histórico ou backup.
-
-## Alterações externas e conflitos
-
-Um watcher nativo monitora a pasta. A árvore é atualizada; documentos sem alterações locais são recarregados. Foco da janela e o botão **Atualizar arquivos** também provocam releitura.
-
-Quando há texto local pendente e uma versão externa diferente, o autosave é interrompido. Você pode comparar o texto externo e escolher:
-
-- Usar a versão do disco, descartando explicitamente o rascunho atual.
-- Substituir o disco pelo texto local; a revisão externa é conferida novamente antes de gravar.
-- Salvar o texto local em uma cópia, preservando ambos.
-
-Se o arquivo desaparecer, o texto permanece disponível para salvar uma cópia. Falhas de escrita bloqueiam a troca de documento e o fechamento normal da janela para permitir recuperação. O fechamento forçado do processo depende do cache de rascunhos e não garante durabilidade em caso de falha do sistema operacional.
-
-## Markdown e anexos
-
-Preview com títulos, listas, tarefas, tabelas GFM, citações, links, imagens e blocos de código. Links relativos para `.md` abrem no editor. Imagens locais PNG, JPEG, GIF, WebP e AVIF usam caminhos relativos ao documento, contidos no workspace. Imagens HTTPS também são suportadas.
-
-Links relativos para PDF, TXT, CSV, documentos Office/OpenDocument e imagens abrem no aplicativo padrão do Windows. HTTP(S) e `mailto:` abrem externamente. Outros protocolos, executáveis, SVG e caminhos fora do workspace são recusados. HTML arbitrário não é executado.
-
-## Qualidade
+### Qualidade
 
 ```powershell
-npm run lint
-npm test
-npm run build
-npm run test:rust
+npm run lint       # ESLint, zero avisos
+npm test           # Vitest
+npm run build      # tsc + build do Vite
+npm run test:rust  # testes Rust com diretórios temporários reais
 ```
 
-Com Node.js 22.13+ também é possível executar checks limitados de caminhos e recuperação sem instalar pacotes:
+## Stack
 
-```powershell
-node scripts/check-core.mjs
-```
+React 18 · TypeScript · Vite 6 · Zustand · CodeMirror 6 · react-markdown + GFM · Tauri 2 · Rust (`notify`, SHA-256).
 
-Esse comando não valida React, Zustand, Tauri ou o sistema de arquivos nativo. Os testes Vitest abrangem ciclo de edição, concorrência de salvamentos, conflitos, falhas e recuperação. Os testes Rust usam diretórios temporários reais para CRUD, UTF-8, listagem, conflitos e confinamento.
+Mais detalhes em [arquitetura](docs/ARCHITECTURE.md), [validação](docs/VALIDATION.md) e [continuidade](docs/CONTINUIDADE.md).
 
-## Gerar executável e instalador
+## Limitações atuais (v0.1.0)
 
-```powershell
-npm run desktop:build
-```
+- Um documento aberto por vez; sem abas.
+- Tema escuro apenas; sem grafo de notas, plugins ou IA.
+- Limites: 16 MB por documento, 20 MB por imagem, 64 níveis de diretórios; a árvore é carregada por inteiro.
+- O workspace deve ser uma pasta local confiável.
+- Somente Windows/NSIS por enquanto, sem assinatura de código.
 
-Após uma compilação bem-sucedida, o executável fica em `src-tauri/target/release/markvault.exe` e o instalador NSIS em `src-tauri/target/release/bundle/nsis/`. O instalador inicial não tem assinatura de código. O alvo configurado é Windows/NSIS; outros sistemas exigem configurar seus respectivos bundles.
+## Autor
 
-## Limitações conhecidas
-
-- Ainda é necessário executar lint, Vitest, compilação Rust e o roteiro manual Windows em um ambiente com as ferramentas e dependências.
-- Um documento aberto por vez; busca por nome/caminho, sem busca no conteúdo.
-- Limite de 16 MB por documento, 20 MB por imagem e 64 níveis de diretórios. A árvore é carregada integralmente; grandes coleções não foram avaliadas.
-- `.git`, `node_modules`, arquivos temporários internos e links/junctions são omitidos da árvore. Anexos ficam no disco e são acessados por links, sem listagem própria.
-- Gravação atômica com duas verificações de revisão reduz conflitos; não oferece bloqueio transacional contra processos externos nem proteção contra alterações maliciosas de caminhos no mesmo instante da operação. O workspace deve ser uma pasta local confiável.
-- Tema escuro inicial; ainda não há tema claro, abas múltiplas, sincronização, grafo, IA ou plugins.
-
-Detalhes em [arquitetura](docs/ARCHITECTURE.md), [discovery](docs/DISCOVERY.md) e [validação](docs/VALIDATION.md).
+Licença [MIT](LICENSE). Feito por [lucodifier](https://github.com/lucodifier). Veja também o [Dachshund](https://lucodifier.github.io/dachshund-landing/).

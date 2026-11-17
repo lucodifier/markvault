@@ -4,7 +4,7 @@ Registro de encerramento da sessão: **10/11/2026**, horário de São Paulo.
 
 ## Estado da versão
 
-Implementação inicial do MVP criada no código. **Ainda não considerar a versão funcionalmente validada ou pronta para distribuição.** Não foi possível compilar nem abrir a janela desktop nesta sessão.
+MVP compilado, validado (lint, Vitest, build e testes Rust passando) e distribuído como instalador NSIS na página de releases do GitHub. Testado manualmente pelo autor.
 
 O escopo original está em `prompt.md`. A referência de stack foi o Alethe em `C:\codes\CodeHolistic\alethe-agents-local`, consultado somente para leitura. Manter React 18, TypeScript, Vite 6, Tauri 2/Rust, Zustand 5, CSS próprio, Lucide, React Markdown/GFM e Radix Dialog. CodeMirror 6 foi adicionado para edição com realce e números de linha.
 
