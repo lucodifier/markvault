@@ -1,10 +1,27 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "MarkVault", "version": "0.1.0", "identifier": "com.codeholistic.markvault",
+  "productName": "MarkVault", "version": "0.2.0", "identifier": "com.codeholistic.markvault",
   "build": { "beforeDevCommand": "npm run dev", "devUrl": "http://127.0.0.1:1420", "beforeBuildCommand": "npm run build", "frontendDist": "../dist" },
   "app": {
-    "windows": [{ "label": "main", "title": "MarkVault", "width": 1320, "height": 880, "minWidth": 760, "minHeight": 540 }],
+    "windows": [{ "label": "main", "title": "MarkVault", "width": 1320, "height": 880, "minWidth": 760, "minHeight": 540, "backgroundColor": "#15171b" }],
     "security": { "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src ipc: http://ipc.localhost; object-src 'none'; frame-src 'none'; base-uri 'none'" }
   },
-  "bundle": { "active": true, "targets": ["nsis"], "icon": ["icons/icon.png", "icons/icon.ico"] }
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "icon": ["icons/icon.png", "icons/icon.ico"],
+    "fileAssociations": [
+      {
+        "ext": ["md"],
+        "name": "Documento Markdown",
+        "description": "Documento Markdown do MarkVault",
+        "role": "Editor"
+      }
+    ],
+    "windows": {
+      "nsis": {
+        "installerHooks": "./nsis/hooks.nsh"
+      }
+    }
+  }
 }

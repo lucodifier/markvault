@@ -1,22 +1,26 @@
 export interface FileEntry { path: string; name: string; directory: boolean; children: FileEntry[] }
 export interface Workspace { name: string; path: string }
+export interface InitialFile { workspacePath: string; path: string }
+export interface WorkspaceSession { workspaces: Workspace[]; activePath?: string; initialFile?: InitialFile }
 export interface DocumentSnapshot { content: string; revision: string }
-export interface ContentMatch { path: string; name: string; line: number; text: string }
+export interface ContentMatch { workspacePath?: string; workspaceName?: string; path: string; name: string; line: number; text: string }
 export interface StorageProvider {
-  openWorkspace(): Promise<Workspace | null>
-  restoreWorkspace(): Promise<Workspace | null>
-  listFiles(): Promise<FileEntry[]>
+  openWorkspace(): Promise<WorkspaceSession | null>
+  removeWorkspace?(workspace: string): Promise<WorkspaceSession>
+  restoreWorkspace(): Promise<WorkspaceSession | null>
+  consumeExternalOpen?(): Promise<WorkspaceSession | null>
+  listFiles(workspace?: string): Promise<FileEntry[]>
   searchContent(query: string): Promise<ContentMatch[]>
-  readFile(path: string): Promise<DocumentSnapshot>
-  writeFile(path: string, content: string, expectedRevision: string): Promise<DocumentSnapshot>
-  createFile(path: string, content?: string): Promise<void>
-  createDirectory(path: string): Promise<void>
-  renameFile(path: string, destination: string): Promise<void>
-  deleteFile(path: string): Promise<void>
-  watchChanges(callback: () => void): Promise<() => void>
-  readAsset(path: string): Promise<string>
+  readFile(path: string, workspace?: string): Promise<DocumentSnapshot>
+  writeFile(path: string, content: string, expectedRevision: string, workspace?: string): Promise<DocumentSnapshot>
+  createFile(path: string, content?: string, workspace?: string): Promise<void>
+  createDirectory(path: string, workspace?: string): Promise<void>
+  renameFile(path: string, destination: string, workspace?: string): Promise<void>
+  deleteFile(path: string, workspace?: string): Promise<void>
+  watchChanges(callback: (workspace?: string) => void): Promise<() => void>
+  readAsset(path: string, workspace?: string): Promise<string>
   openExternal(url: string): Promise<void>
-  openAttachment(path: string): Promise<void>
+  openAttachment(path: string, workspace?: string): Promise<void>
 }
 export const isMarkdown = (path: string) => /\.md$/i.test(path)
 export function resolveRelative(document: string, target: string): string | null {

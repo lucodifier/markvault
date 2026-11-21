@@ -1,39 +1,61 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { DocumentSnapshot, FileEntry, StorageProvider } from '../storage/types'
+import type { DocumentSnapshot, FileEntry, StorageProvider, Workspace, WorkspaceSession } from '../storage/types'
 import { makeWorkspaceStore } from './workspaceStore'
 import { recovery } from './recovery'
 
 // Test double only; the application always uses the native filesystem provider.
 class TestProvider implements StorageProvider {
-  data = new Map([['nota.md', '# Inicial'], ['pasta/outra.md', 'Outra']])
+  filesByRoot = new Map<string, Map<string, string>>([
+    ['/teste', new Map([['nota.md', '# Inicial'], ['pasta/outra.md', 'Outra']])],
+  ])
+  workspaces: Workspace[] = [{ name: 'Teste', path: '/teste' }]
+  activePath: string | undefined = '/teste'
+  initialFile: WorkspaceSession['initialFile'] = undefined
+  externalTarget: WorkspaceSession | null = null
   failures = { read: false, write: false }
-  workspace = { name: 'Teste', path: '/teste' }
-  listeners = new Set<() => void>()
-  openWorkspace = async () => this.workspace
-  restoreWorkspace = async () => this.workspace
-  listFiles = async (): Promise<FileEntry[]> => [...this.data.keys()].map(path => ({ name: path, path, directory: false, children: [] }))
+  listeners = new Set<(workspace?: string) => void>()
+
+  private bucket(workspace?: string) {
+    const key = workspace ?? this.activePath ?? this.workspaces[0]?.path ?? '/teste'
+    let map = this.filesByRoot.get(key)
+    if (!map) { map = new Map(); this.filesByRoot.set(key, map) }
+    return map
+  }
+  get data() { return this.bucket('/teste') }
+
+  openWorkspace = async (): Promise<WorkspaceSession> => ({ workspaces: [...this.workspaces], activePath: this.activePath })
+  removeWorkspace = async (workspace: string): Promise<WorkspaceSession> => {
+    this.workspaces = this.workspaces.filter(w => w.path !== workspace)
+    if (this.activePath === workspace) this.activePath = this.workspaces[0]?.path
+    return { workspaces: [...this.workspaces], activePath: this.activePath }
+  }
+  restoreWorkspace = async (): Promise<WorkspaceSession> => ({ workspaces: [...this.workspaces], activePath: this.activePath, initialFile: this.initialFile })
+  consumeExternalOpen = async () => { const target = this.externalTarget; this.externalTarget = null; return target }
+  listFiles = async (workspace?: string): Promise<FileEntry[]> => [...this.bucket(workspace).keys()].map(path => ({ name: path, path, directory: false, children: [] }))
   searchContent = async () => []
-  readFile = async (path: string): Promise<DocumentSnapshot> => {
+  readFile = async (path: string, workspace?: string): Promise<DocumentSnapshot> => {
     if (this.failures.read) throw new Error('Leitura negada')
-    if (!this.data.has(path)) throw new Error('Arquivo ausente')
-    const content = this.data.get(path)!
+    const map = this.bucket(workspace)
+    if (!map.has(path)) throw new Error('Arquivo ausente')
+    const content = map.get(path)!
     return { content, revision: content }
   }
-  writeFile = vi.fn(async (path: string, content: string, expected: string) => {
+  writeFile = vi.fn(async (path: string, content: string, expected: string, workspace?: string) => {
     if (this.failures.write) throw new Error('Escrita negada')
-    if (this.data.get(path) !== expected) throw new Error('CONFLICT')
-    this.data.set(path, content)
+    const map = this.bucket(workspace)
+    if (map.get(path) !== expected) throw new Error('CONFLICT')
+    map.set(path, content)
     return { content, revision: content }
   })
-  createFile = async (path: string, content = '') => { if (this.data.has(path)) throw new Error('Já existe'); this.data.set(path, content) }
+  createFile = async (path: string, content = '', workspace?: string) => { const map = this.bucket(workspace); if (map.has(path)) throw new Error('Já existe'); map.set(path, content) }
   createDirectory = async () => {}
-  renameFile = async (path: string, target: string) => { this.data.set(target, this.data.get(path)!); this.data.delete(path) }
-  deleteFile = async (path: string) => { this.data.delete(path) }
-  watchChanges = async (cb: () => void) => { this.listeners.add(cb); return () => { this.listeners.delete(cb) } }
+  renameFile = async (path: string, target: string, workspace?: string) => { const map = this.bucket(workspace); map.set(target, map.get(path)!); map.delete(path) }
+  deleteFile = async (path: string, workspace?: string) => { this.bucket(workspace).delete(path) }
+  watchChanges = async (cb: (workspace?: string) => void) => { this.listeners.add(cb); return () => { this.listeners.delete(cb) } }
   readAsset = async () => 'data:image/png;base64,'
   openExternal = async () => {}
   openAttachment = async () => {}
-  external(path: string, content: string) { this.data.set(path, content); this.listeners.forEach(cb => cb()) }
+  external(path: string, content: string, workspace = '/teste') { this.bucket(workspace).set(path, content); this.listeners.forEach(cb => cb(workspace)) }
 }
 beforeEach(() => {
   const data = new Map<string, string>()
@@ -63,7 +85,7 @@ describe('workspace lifecycle', () => {
   it('refreshes clean documents on watcher notifications and unsubscribes', async () => {
     const { provider, state } = await setup()
     let refresh: Promise<void> | undefined
-    const stop = await provider.watchChanges(() => { refresh = state().refresh() })
+    const stop = await provider.watchChanges(ws => { refresh = state().refresh(ws) })
     provider.external('nota.md', 'Externo'); await refresh
     expect(state().document?.content).toBe('Externo')
     expect(state().conflict).toBeNull(); stop(); expect(provider.listeners.size).toBe(0)
@@ -135,5 +157,48 @@ describe('workspace lifecycle', () => {
     expect(provider.data.get('nota.md')).toBe('Segundo')
     expect(state().document?.content).toBe('Segundo')
     expect(state().saving).toBe(false)
+  })
+  it('opens an initial markdown file directly on cold start and handles warm external opens safely', async () => {
+    const provider = new TestProvider()
+    provider.initialFile = { workspacePath: '/teste', path: 'pasta/outra.md' }
+    const store = makeWorkspaceStore(provider)
+    await store.getState().initialize()
+    expect(store.getState().document?.path).toBe('pasta/outra.md')
+    expect(store.getState().document?.content).toBe('Outra')
+
+    store.getState().edit('Editado antes de abrir outro')
+    provider.externalTarget = { workspaces: [...provider.workspaces], activePath: '/teste', initialFile: { workspacePath: '/teste', path: 'nota.md' } }
+    await store.getState().openExternalTarget()
+    expect(provider.data.get('pasta/outra.md')).toBe('Editado antes de abrir outro')
+    expect(store.getState().document?.path).toBe('nota.md')
+
+    store.getState().edit('Nao perder')
+    provider.failures.write = true
+    provider.externalTarget = { workspaces: [...provider.workspaces], activePath: '/teste', initialFile: { workspacePath: '/teste', path: 'pasta/outra.md' } }
+    await store.getState().openExternalTarget()
+    expect(store.getState().document?.path).toBe('nota.md')
+    expect(provider.externalTarget).not.toBeNull()
+  })
+  it('manages multiple open folders, removes references without deleting files, and persists folder expansion state', async () => {
+    const provider = new TestProvider()
+    provider.workspaces = [{ name: 'Teste', path: '/teste' }, { name: 'Docs', path: '/docs' }]
+    provider.filesByRoot.set('/docs', new Map([['guia.md', '# Guia']]))
+    const store = makeWorkspaceStore(provider)
+    await store.getState().initialize()
+    expect(store.getState().workspaces).toHaveLength(2)
+    expect(await store.getState().openDocument('guia.md', '/docs')).toBe(true)
+    expect(store.getState().document?.workspacePath).toBe('/docs')
+
+    // Persist expanded/collapsed state across store restarts.
+    store.getState().toggleExpanded('/teste::subpasta', true)
+    expect(store.getState().expanded['/teste::subpasta']).toBe(false)
+    const restarted = makeWorkspaceStore(provider)
+    expect(restarted.getState().expanded['/teste::subpasta']).toBe(false)
+
+    // Removing a folder reference does NOT delete files on disk.
+    expect(await store.getState().removeWorkspace('/docs')).toBe(true)
+    expect(store.getState().workspaces.map(w => w.path)).toEqual(['/teste'])
+    expect(provider.filesByRoot.get('/docs')?.get('guia.md')).toBe('# Guia')
+    expect(store.getState().document).toBeNull()
   })
 })

@@ -22,13 +22,13 @@ export function ActionDialog({ action, onClose }: { action: FileAction; onClose(
     }
     setSubmitting(true)
     let ok = false
-    if (action.kind === 'delete') ok = await store.remove(action.path)
-    else if (action.kind === 'rename') ok = await store.rename(action.path, [...action.path.split('/').slice(0, -1), path].join('/'))
+    if (action.kind === 'delete') ok = await store.remove(action.path, action.workspacePath)
+    else if (action.kind === 'rename') ok = await store.rename(action.path, [...action.path.split('/').slice(0, -1), path].join('/'), action.workspacePath)
     else if (action.kind === 'copy') ok = await store.saveCopy(path)
     else {
       path = [action.path, path].filter(Boolean).join('/')
-      ok = await store.create(path, action.kind === 'directory')
-      if (ok && action.kind === 'file') await store.openDocument(path)
+      ok = await store.create(path, action.kind === 'directory', action.workspacePath)
+      if (ok && action.kind === 'file') await store.openDocument(path, action.workspacePath)
     }
     setSubmitting(false)
     if (ok) onClose()

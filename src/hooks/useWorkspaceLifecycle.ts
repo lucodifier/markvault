@@ -14,34 +14,39 @@ export function useWorkspaceLifecycle() {
     let disposed = false
     let timer: ReturnType<typeof setTimeout>
     const unsubscribes: (() => void)[] = []
-    const add = (unsubscribe: () => void) => disposed ? unsubscribe() : unsubscribes.push(unsubscribe)
-    const refresh = () => {
+    const add = (unsubscribe: () => void) => { if (disposed) unsubscribe(); else unsubscribes.push(unsubscribe) }
+    const refresh = (workspacePath?: string) => {
       clearTimeout(timer)
-      timer = setTimeout(() => { if (!disposed) void useWorkspace.getState().refresh() }, 180)
+      timer = setTimeout(() => { if (!disposed) void useWorkspace.getState().refresh(workspacePath) }, 180)
     }
+    const refreshAll = () => refresh()
     void (async () => {
       try {
-        add(await storage.watchChanges(refresh))
-        if (disposed) return
         initialization ??= useWorkspace.getState().initialize()
-        await initialization
-        if (isTauri() && !disposed) {
-          add(await listen<string>('workspace-watch-error', e => useWorkspace.setState({ error: `Monitoramento interrompido: ${e.payload}. Use Atualizar para reler a pasta.` })))
-          add(await getCurrentWindow().onCloseRequested(async event => {
-            event.preventDefault()
-            if (await useWorkspace.getState().save()) await getCurrentWindow().destroy()
-            else useWorkspace.setState({ error: 'Resolva o conflito ou o erro de salvamento antes de fechar. Seu rascunho foi mantido.' })
-          }))
+        const listeners: Promise<void>[] = [
+          storage.watchChanges(refresh).then(add),
+        ]
+        if (isTauri()) {
+          listeners.push(
+            listen('external-open-requested', () => { void useWorkspace.getState().openExternalTarget() }).then(add),
+            listen<string>('workspace-watch-error', e => useWorkspace.setState({ error: `Monitoramento interrompido: ${e.payload}. Use Atualizar para reler a pasta.` })).then(add),
+            getCurrentWindow().onCloseRequested(async event => {
+              event.preventDefault()
+              if (await useWorkspace.getState().save()) await getCurrentWindow().destroy()
+              else useWorkspace.setState({ error: 'Resolva o conflito ou o erro de salvamento antes de fechar. Seu rascunho foi mantido.' })
+            }).then(add),
+          )
         }
+        await Promise.all([initialization, ...listeners])
       } catch (e) { useWorkspace.setState({ error: String(e), busy: false }) }
     })()
-    window.addEventListener('focus', refresh)
+    window.addEventListener('focus', refreshAll)
     const beforeUnload = (e: BeforeUnloadEvent) => {
       const d = useWorkspace.getState().document
       if (d && d.content !== d.saved) { e.preventDefault(); e.returnValue = '' }
     }
     window.addEventListener('beforeunload', beforeUnload)
-    return () => { disposed = true; clearTimeout(timer); unsubscribes.forEach(fn => fn()); window.removeEventListener('focus', refresh); window.removeEventListener('beforeunload', beforeUnload) }
+    return () => { disposed = true; clearTimeout(timer); unsubscribes.forEach(fn => fn()); window.removeEventListener('focus', refreshAll); window.removeEventListener('beforeunload', beforeUnload) }
   }, [])
   useEffect(() => {
     if (conflict) return

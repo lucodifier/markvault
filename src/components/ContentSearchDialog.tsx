@@ -14,6 +14,7 @@ export function ContentSearchDialog({ onClose }: { onClose(): void }) {
   const [searching, setSearching] = useState(false)
   const [error, setError] = useState('')
   const open = useWorkspace(s => s.openDocument)
+  const multiple = useWorkspace(s => s.workspaces.length > 1)
   const run = useRef(0)
   const term = query.trim()
   useEffect(() => {
@@ -41,9 +42,9 @@ export function ContentSearchDialog({ onClose }: { onClose(): void }) {
     <Dialog.Title>Buscar no conteúdo</Dialog.Title><Dialog.Description>Procura no texto de todos os documentos .md do workspace. Ctrl+Shift+F</Dialog.Description>
     <div className="search-input"><Search size={18} /><input aria-label="Buscar no conteúdo" autoFocus placeholder="Termo no texto das notas…" value={query} onChange={e => setQuery(e.target.value)} /></div>
     <p className={`content-status ${error ? 'danger-text' : 'muted'}`} role="status">{searching && <Loader2 size={12} className="spin" />}{status}</p>
-    <div className="search-results content-results">{matches.map(match => <button key={`${match.path}:${match.line}`} title={`${match.path}:${match.line}`} onClick={async () => { if (await open(match.path)) onClose() }}>
+    <div className="search-results content-results">{matches.map(match => <button key={`${match.workspacePath ?? ''}:${match.path}:${match.line}`} title={`${match.path}:${match.line}`} onClick={async () => { if (await open(match.path, match.workspacePath)) onClose() }}>
       <FileText size={16} />
-      <span><strong>{match.name}<small>linha {match.line}</small></strong><code>{match.text || '(linha vazia)'}</code><small>{match.path}</small></span>
+      <span><strong>{match.name}<small>linha {match.line}</small></strong><code>{match.text || '(linha vazia)'}</code><small>{multiple && match.workspaceName ? `${match.workspaceName} / ${match.path}` : match.path}</small></span>
     </button>)}</div>
     <Dialog.Close asChild><button className="modal-close icon-button" aria-label="Fechar"><X size={18} /></button></Dialog.Close>
   </Dialog.Content></Dialog.Portal></Dialog.Root>

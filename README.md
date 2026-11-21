@@ -42,7 +42,7 @@ MarkVault é um aplicativo desktop que transforma uma pasta comum de arquivos `.
 
 ## Instalação (Windows)
 
-1. Baixe `MarkVault_0.1.0_x64-setup.exe` na [página de releases](https://github.com/lucodifier/markvault/releases/latest).
+1. Baixe `MarkVault_0.2.0_x64-setup.exe` na [página de releases](https://github.com/lucodifier/markvault/releases/latest).
 2. Execute o instalador. Ele ainda **não é assinado**, então o SmartScreen pode avisar: clique em *Mais informações → Executar assim mesmo*.
 3. Abra o MarkVault, clique em **Abrir pasta local** e escolha sua pasta de notas.
 
@@ -83,7 +83,7 @@ React 18 · TypeScript · Vite 6 · Zustand · CodeMirror 6 · react-markdown + 
 
 Mais detalhes em [arquitetura](docs/ARCHITECTURE.md), [validação](docs/VALIDATION.md) e [continuidade](docs/CONTINUIDADE.md).
 
-## Limitações atuais (v0.1.0)
+## Limitações atuais (v0.2.0)
 
 - Um documento aberto por vez; sem abas.
 - Tema escuro apenas; sem grafo de notas, plugins ou IA.

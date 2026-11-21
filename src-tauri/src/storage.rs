@@ -14,6 +14,31 @@ pub struct ContentMatch { pub path: String, pub name: String, pub line: usize, p
 
 pub struct LocalFilesystemProvider { pub root: PathBuf }
 
+pub fn check_not_link(meta: &fs::Metadata) -> Result<()> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        if meta.file_attributes() & 0x400 != 0 {
+            return Err("Links e junctions não são permitidos.".into());
+        }
+    }
+    if meta.file_type().is_symlink() {
+        return Err("Links simbólicos não são permitidos.".into());
+    }
+    Ok(())
+}
+
+fn validate_component_name(name: &str) -> Result<()> {
+    if name.ends_with('.') || name.ends_with(' ') || name.chars().any(|c| c.is_control() || "<>\"|?*".contains(c)) {
+        return Err("Nome de arquivo inválido.".into());
+    }
+    let base = name.split('.').next().unwrap_or("").to_uppercase();
+    if ["CON", "PRN", "AUX", "NUL"].contains(&base.as_str()) || (base.len() == 4 && (base.starts_with("COM") || base.starts_with("LPT")) && matches!(base.as_bytes()[3], b'1'..=b'9')) {
+        return Err("Nome reservado pelo Windows.".into());
+    }
+    Ok(())
+}
+
 impl LocalFilesystemProvider {
     pub fn new(root: &Path) -> Result<Self> {
         let root = root.canonicalize().map_err(|e| e.to_string())?;
@@ -34,20 +59,11 @@ impl LocalFilesystemProvider {
         let count = path.components().count();
         for (i, component) in path.components().enumerate() {
             let name = component.as_os_str().to_string_lossy();
-            if name.ends_with('.') || name.ends_with(' ') || name.chars().any(|c| c.is_control() || "<>\"|?*".contains(c)) {
-                return Err("Nome de arquivo inválido.".into());
-            }
-            let base = name.split('.').next().unwrap_or("").to_uppercase();
-            if ["CON", "PRN", "AUX", "NUL"].contains(&base.as_str()) || (base.len() == 4 && (base.starts_with("COM") || base.starts_with("LPT")) && matches!(base.as_bytes()[3], b'1'..=b'9')) {
-                return Err("Nome reservado pelo Windows.".into());
-            }
+            validate_component_name(&name)?;
             target.push(component);
             match fs::symlink_metadata(&target) {
                 Ok(meta) => {
-                    #[cfg(windows)]
-                    { use std::os::windows::fs::MetadataExt;
-                      if meta.file_attributes() & 0x400 != 0 { return Err("Links e junctions não são permitidos.".into()); } }
-                    if meta.file_type().is_symlink() { return Err("Links simbólicos não são permitidos.".into()); }
+                    check_not_link(&meta)?;
                     let canonical = target.canonicalize().map_err(|e| e.to_string())?;
                     if !canonical.starts_with(&self.root) { return Err("Acesso fora do workspace.".into()); }
                 }
@@ -71,11 +87,12 @@ impl LocalFilesystemProvider {
             let name = item.file_name().to_string_lossy().to_string();
             // Internal temp files and VCS/dependency folders are not document collections.
             if name.starts_with(".markvault-") || [".git", "node_modules"].contains(&name.as_str()) { continue; }
-            let relative = path.strip_prefix(&self.root).map_err(|e| e.to_string())?.to_string_lossy().replace('\\', "/");
-            if self.resolve(&relative, true).is_err() { continue; }
-            let meta = item.metadata().map_err(|e| e.to_string())?;
+            if validate_component_name(&name).is_err() { continue; }
+            let Ok(meta) = fs::symlink_metadata(&path) else { continue };
+            if check_not_link(&meta).is_err() { continue; }
             let directory = meta.is_dir();
             if !directory && !name.to_lowercase().ends_with(".md") { continue; }
+            let relative = path.strip_prefix(&self.root).map_err(|e| e.to_string())?.to_string_lossy().replace('\\', "/");
             let children = if directory { self.list_at(&path, depth + 1)? } else { vec![] };
             entries.push(Entry { path: relative, name, directory, children });
         }
