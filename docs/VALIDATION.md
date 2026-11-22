@@ -1,17 +1,17 @@
-# Validação da implementação inicial
+﻿# Validação
 
-## Resultado observado (16/11/2026)
+## Resultado observado — v0.3.0 (22/11/2026)
 
 | Verificação | Resultado |
 | --- | --- |
 | `npm run lint` | PASS (zero avisos) |
-| `npm test` | PASS: 15 testes em 3 arquivos |
+| `npm test` | PASS: 17 testes em 3 arquivos |
 | `npm run build` | PASS |
-| `npm run test:rust` | PASS: 8 testes |
-| `npm run desktop:build` | PASS: instalador NSIS `MarkVault_0.1.0_x64-setup.exe` (1,87 MiB) |
-| Operação real da janela Windows | Executado e testado manualmente pelo autor; funcional |
+| `npm run test:rust` | PASS: 10 testes |
+| `npm run desktop:build` | PASS: instalador NSIS `MarkVault_0.3.0_x64-setup.exe` (3,25 MiB) |
+| Operação real da janela Windows | Executado e testado manualmente pelo autor; funcional (v0.3.0 aprovada) |
 
-O roteiro manual abaixo continua sendo a referência para regressões.
+Ambiente: Node 24.18, Rust 1.99.1 (MSVC), Windows. O roteiro manual abaixo continua sendo a referência para regressões.
 
 ## Testes escritos
 
@@ -35,4 +35,13 @@ Use uma pasta temporária com documentos e anexos de teste, sem dados únicos.
 11. Teste imagens e links com `../` dentro da raiz e tentativa de sair dela. Teste uma junction para outra pasta; não deve aparecer nem permitir leitura/escrita.
 12. Feche e reabra normalmente. Confirme restauração da pasta/nota e permanência do conteúdo. Compile com `npm run desktop:build` e repita o fluxo essencial no executável e no instalador NSIS.
 
-Registre versões de Node, Rust, Windows e WebView2 e os resultados efetivos antes de marcar o MVP concluído.
+Para cada nova versão, registre versões de Node, Rust, Windows e WebView2 e os resultados efetivos.
+
+
+## Roteiro adicional (0.2.0 e 0.3.0)
+
+13. Abra duas ou mais pastas; confirme árvore, busca e edição em cada uma e restauração após reiniciar.
+14. Abra um .md pelo Explorer (associação) e uma pasta por argumento de linha de comando.
+15. Menu de contexto: copiar caminho absoluto, relativo e link Markdown.
+16. Preview: quebras de linha simples e bloco `mermaid` renderizado.
+17. Editor: URL https://... sublinhada; Ctrl+clique abre no navegador padrão e clique simples apenas edita.

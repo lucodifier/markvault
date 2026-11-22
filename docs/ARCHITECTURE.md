@@ -1,4 +1,4 @@
-# Arquitetura e decisões
+﻿# Arquitetura e decisões
 
 ```text
 src/
@@ -11,14 +11,15 @@ src-tauri/
   src/lib.rs     comandos IPC, seletor nativo, eventos e estado autorizado
   src/storage.rs operações de arquivos, limites e validação de caminhos
   capabilities/ permissões mínimas da webview
-docs/            discovery e validação
+docs/            discovery, arquitetura, validação, continuidade e prompt original
+site/            landing page (GitHub Pages)
 ```
 
 ## Fluxo de dados
 
-Os componentes usam o store Zustand. O store recebe um `StorageProvider`, com operações de listagem, leitura, escrita, criação, renomeação, exclusão e observação. O adaptador `LocalFilesystemProvider` traduz essas operações em comandos Tauri. O backend mantém somente a pasta escolhida pelo seletor nativo ou a última pasta previamente autorizada, persistida nos dados da aplicação.
+Os componentes usam o store Zustand. O store recebe um `StorageProvider`, com operações de listagem, leitura, escrita, criação, renomeação, exclusão e observação. O adaptador `LocalFilesystemProvider` traduz essas operações em comandos Tauri. O backend mantém somente as pastas escolhidas pelo seletor nativo, abertas via associação de arquivo .md/argumento de linha de comando ou previamente autorizadas, persistidas nos dados da aplicação. Várias pastas podem ficar abertas ao mesmo tempo; cada comando recebe o workspace alvo e há um watcher por pasta.
 
-O editor recebe texto e devolve alterações; não conhece IPC, caminhos absolutos, Google Drive ou Git. A renderização recebe o documento e resolve links relativos pelo adaptador. Os componentes não chamam `invoke` diretamente.
+O editor recebe texto e devolve alterações; não conhece IPC, caminhos absolutos, Google Drive ou Git. A renderização recebe o documento, aplica GFM e quebras de linha, renderiza blocos `mermaid` como diagramas e resolve links relativos pelo adaptador. No editor, URLs http(s) são sublinhadas e abertas no navegador padrão com Ctrl/Cmd+clique, via comando open_external do backend. Os componentes não chamam `invoke` diretamente.
 
 ## Persistência e conflitos
 
@@ -36,7 +37,7 @@ O frontend envia caminhos relativos. O backend rejeita caminhos absolutos, compo
 
 Somente `.md` pode ser editado; imagens têm formatos e limites explícitos. Anexos abrem apenas por uma lista de extensões de documentos. Não se expõe um comando genérico de shell nem uma permissão ampla de filesystem à webview. A CSP restringe scripts, frames e protocolos; HTML Markdown não é executado.
 
-A validação protege contra acessos acidentais. Não há garantia contra um processo hostil alterando links/arquivos entre a verificação e a operação, hardlinks previamente existentes ou uma gravação externa no intervalo final entre checagem e substituição. Também não existe lock cooperativo entre múltiplas instâncias. O MVP trabalha com pastas locais confiáveis.
+A validação protege contra acessos acidentais. Não há garantia contra um processo hostil alterando links/arquivos entre a verificação e a operação, hardlinks previamente existentes ou uma gravação externa no intervalo final entre checagem e substituição. Também não existe lock cooperativo entre múltiplas instâncias. O aplicativo trabalha com pastas locais confiáveis.
 
 ## Evolução de provedores
 
