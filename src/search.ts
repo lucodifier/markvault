@@ -1,11 +1,11 @@
-import type { FileEntry } from './storage/types'
+import { isMarkdown, type FileEntry } from './storage/types'
 
 const COMBINING_MARKS = /[\u0300-\u036f]/g
 const SEPARATORS = /[^\p{L}\p{N}]+/u
 
 export const normalize = (value: string) => value.toLocaleLowerCase().normalize('NFD').replace(COMBINING_MARKS, '')
 
-export const flattenFiles = (entries: FileEntry[]): FileEntry[] => entries.flatMap(entry => entry.directory ? flattenFiles(entry.children) : [entry])
+export const flattenFiles = (entries: FileEntry[]): FileEntry[] => entries.flatMap(entry => entry.directory ? flattenFiles(entry.children) : isMarkdown(entry.name) ? [entry] : [])
 
 const position = (name: string, query: string) => {
   const index = name.indexOf(query)

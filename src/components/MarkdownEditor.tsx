@@ -81,6 +81,7 @@ async function insertImages(view: EditorView, files: File[]) {
       changes: { from: sel.from, to: sel.to, insert },
       selection: { anchor: sel.from + insert.length },
     })
+    void useWorkspace.getState().refresh(doc.workspacePath)
     useWorkspace.setState({ notice: links.length === 1 ? `Imagem salva na pasta da nota` : `${links.length} imagens salvas na pasta da nota` })
   } catch (e) {
     useWorkspace.setState({ error: e instanceof Error ? e.message : String(e) })

@@ -22,9 +22,11 @@ export interface StorageProvider {
   readAsset(path: string, workspace?: string): Promise<string>
   saveImage?(directory: string, name: string, dataBase64: string, workspace?: string): Promise<string>
   openExternal(url: string): Promise<void>
+  openInExplorer?(path: string, workspace?: string): Promise<void>
   openAttachment(path: string, workspace?: string): Promise<void>
 }
 export const isMarkdown = (path: string) => /\.md$/i.test(path)
+export const isImageFile = (path: string) => /\.(png|jpe?g|gif|webp|avif)$/i.test(path)
 export function resolveRelative(document: string, target: string): string | null {
   if (/^[a-z][a-z\d+.-]*:|^[/\\]/i.test(target)) return null
   const parts = document.split('/').slice(0, -1)

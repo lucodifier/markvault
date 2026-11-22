@@ -1,10 +1,10 @@
-# Continuidade — MarkVault 0.6.0
+# Continuidade — MarkVault 0.7.0
 
 Registro de estado atualizado em **22/11/2026**.
 
 ## Estado da versão
 
-Versão **0.6.0** estável, validada (lint, Vitest, build e testes Rust) e distribuída como instalador NSIS na página de releases do GitHub. Decisão do autor: a versão atual está boa; **não alterar código sem nova demanda**.
+Versão **0.7.0** estável, validada (lint, Vitest, build e testes Rust) e distribuída como instalador NSIS na página de releases do GitHub. Decisão do autor: a versão atual está boa; **não alterar código sem nova demanda**.
 
 Histórico resumido:
 
@@ -14,6 +14,7 @@ Histórico resumido:
 - **0.4.0** — mover arquivos e pastas arrastando na árvore ou por **Mover para…**, inclusive entre workspaces abertos (comando `move_entry`).
 - **0.5.0** — diagramas Mermaid abrem ampliados ao clicar (zoom e arrastar) e modo Leitura ampliado.
 - **0.6.0** — colar print (`Ctrl+V`) ou soltar imagem no editor salva o arquivo na mesma pasta da nota e insere `![](...)` automaticamente; imagens abrem ampliadas ao clicar.
+- **0.7.0** — imagens aparecem na árvore lateral com ícone próprio (visualizar ao clicar, renomear, mover e excluir) e menu de contexto inclui **Abrir pasta no Explorer** / **Mostrar no Explorer**.
 
 O escopo original está em [`prompt.md`](prompt.md). A referência de stack foi o Alethe (somente leitura). Manter React 18, TypeScript, Vite 6, Tauri 2/Rust, Zustand 5, CSS próprio, Lucide, React Markdown/GFM, Radix Dialog e CodeMirror 6.
 

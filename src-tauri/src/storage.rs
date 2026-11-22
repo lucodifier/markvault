@@ -5,6 +5,16 @@ use std::{fs, io::Write, path::{Component, Path, PathBuf}};
 pub type Result<T> = std::result::Result<T, String>;
 const MAX_DOCUMENT: u64 = 16 * 1024 * 1024;
 const MAX_IMAGE: u64 = 20 * 1024 * 1024;
+const IMAGE_EXTENSIONS: [&str; 6] = ["png", "jpg", "jpeg", "gif", "webp", "avif"];
+
+pub fn is_image_path(path: &str) -> bool {
+    let ext = Path::new(path).extension().unwrap_or_default().to_string_lossy().to_lowercase();
+    IMAGE_EXTENSIONS.contains(&ext.as_str())
+}
+
+fn is_editable_entry(path: &str) -> bool {
+    path.to_lowercase().ends_with(".md") || is_image_path(path)
+}
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Snapshot { pub content: String, pub revision: String }
@@ -92,7 +102,7 @@ impl LocalFilesystemProvider {
             let Ok(meta) = fs::symlink_metadata(&path) else { continue };
             if check_not_link(&meta).is_err() { continue; }
             let directory = meta.is_dir();
-            if !directory && !name.to_lowercase().ends_with(".md") { continue; }
+            if !directory && !is_editable_entry(&name) { continue; }
             let relative = path.strip_prefix(&self.root).map_err(|e| e.to_string())?.to_string_lossy().replace('\\', "/");
             let children = if directory { self.list_at(&path, depth + 1)? } else { vec![] };
             entries.push(Entry { path: relative, name, directory, children });
@@ -130,7 +140,11 @@ impl LocalFilesystemProvider {
     pub fn rename(&self, path: &str, destination: &str) -> Result<()> {
         let source = self.resolve(path, true)?;
         let target = self.resolve(destination, false)?;
-        if source.is_file() { self.markdown(path, true)?; self.markdown(destination, false)?; }
+        if source.is_file() {
+            if !is_editable_entry(path) || !is_editable_entry(destination) {
+                return Err("Somente documentos .md ou imagens suportadas podem ser renomeados.".into());
+            }
+        }
         if target.exists() { return Err("Já existe um item com esse nome.".into()); }
         fs::rename(source, target).map_err(|e| e.to_string())
     }
@@ -139,7 +153,11 @@ impl LocalFilesystemProvider {
     pub fn move_to(&self, other: &Self, path: &str, destination: &str) -> Result<()> {
         let source = self.resolve(path, true)?;
         let target = other.resolve(destination, false)?;
-        if source.is_file() { self.markdown(path, true)?; other.markdown(destination, false)?; }
+        if source.is_file() {
+            if !is_editable_entry(path) || !is_editable_entry(destination) {
+                return Err("Somente documentos .md ou imagens suportadas podem ser movidos.".into());
+            }
+        }
         if target.exists() { return Err("Já existe um item com esse nome na pasta de destino.".into()); }
         if target.starts_with(&source) { return Err("Não é possível mover uma pasta para dentro dela mesma.".into()); }
         if fs::rename(&source, &target).is_ok() { return Ok(()); }
@@ -167,7 +185,12 @@ impl LocalFilesystemProvider {
     }
     pub fn delete(&self, path: &str) -> Result<()> {
         let target = self.resolve(path, true)?;
-        if target.is_dir() { fs::remove_dir_all(target) } else { self.markdown(path, true)?; fs::remove_file(target) }.map_err(|e| e.to_string())
+        if target.is_dir() {
+            fs::remove_dir_all(target).map_err(|e| e.to_string())
+        } else {
+            if !is_editable_entry(path) { return Err("Somente documentos .md ou imagens suportadas podem ser excluídos.".into()); }
+            fs::remove_file(target).map_err(|e| e.to_string())
+        }
     }
     /// Saves a pasted image into the same folder as the current document, picking a unique name.
     pub fn save_image(&self, directory: &str, name: &str, bytes: &[u8]) -> Result<String> {
@@ -203,7 +226,11 @@ impl LocalFilesystemProvider {
 }
 fn collect_documents(entries: Vec<Entry>, files: &mut Vec<(String, String)>) {
     for entry in entries {
-        if entry.directory { collect_documents(entry.children, files) } else { files.push((entry.path, entry.name)) }
+        if entry.directory {
+            collect_documents(entry.children, files);
+        } else if entry.name.to_lowercase().ends_with(".md") {
+            files.push((entry.path, entry.name));
+        }
     }
 }
 // Long lines are cut around the match so the preview shows why the line was returned.
@@ -233,6 +260,11 @@ mod tests {
         assert_eq!(second, "print-1.png");
         assert!(d.path().join("Notas/print.png").is_file());
         assert!(d.path().join("Notas/print-1.png").is_file());
+        let listed: Vec<String> = p.list().unwrap()[0].children.iter().map(|c| c.name.clone()).collect();
+        assert_eq!(listed, vec!["print-1.png", "print.png"]);
+        p.rename("Notas/print-1.png", "Notas/print-novo.png").unwrap();
+        p.delete("Notas/print-novo.png").unwrap();
+        assert!(!d.path().join("Notas/print-novo.png").exists());
         assert!(p.save_image("Notas", "bad.exe", &[1]).is_err());
         assert!(p.save_image("../fora", "a.png", &[1]).is_err());
     }

@@ -22,6 +22,7 @@ export class LocalFilesystemProvider implements StorageProvider {
   readAsset = (path: string, workspace?: string) => this.call<string>('read_asset', { path, workspace })
   saveImage = (directory: string, name: string, dataBase64: string, workspace?: string) => this.call<string>('save_image', { directory, name, dataBase64, workspace })
   openExternal = (url: string) => this.call<void>('open_external', { url })
+  openInExplorer = (path: string, workspace?: string) => this.call<void>('open_in_explorer', { path, workspace })
   openAttachment = (path: string, workspace?: string) => this.call<void>('open_attachment', { path, workspace })
   async watchChanges(callback: (workspace?: string) => void) {
     if (!isTauri()) return () => {}

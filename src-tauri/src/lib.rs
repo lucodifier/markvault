@@ -342,6 +342,17 @@ fn open_external(app: tauri::AppHandle, url: String) -> Result<()> {
     app.opener().open_url(url, None::<&str>).map_err(|e| e.to_string())
 }
 #[tauri::command]
+fn open_in_explorer(app: tauri::AppHandle, state: State<AppState>, path: String, workspace: Option<String>) -> Result<()> {
+    with_workspace(&state, workspace.as_deref(), |p| {
+        let target = if path.is_empty() { p.root.clone() } else { p.resolve(&path, true)? };
+        if target.is_dir() {
+            app.opener().open_path(target.to_string_lossy().into_owned(), None::<&str>).map_err(|e| e.to_string())
+        } else {
+            app.opener().reveal_item_in_dir(target).map_err(|e| e.to_string())
+        }
+    })
+}
+#[tauri::command]
 fn open_attachment(app: tauri::AppHandle, state: State<AppState>, path: String, workspace: Option<String>) -> Result<()> {
     with_workspace(&state, workspace.as_deref(), |p| {
         let target = p.resolve(&path, true)?;
@@ -372,7 +383,7 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![open_workspace, remove_workspace, restore_workspace, consume_external_open, list_files, read_file, write_file, create_file, create_directory, rename_file, move_entry, delete_file, read_asset, save_image, search_content, open_external, open_attachment])
+        .invoke_handler(tauri::generate_handler![open_workspace, remove_workspace, restore_workspace, consume_external_open, list_files, read_file, write_file, create_file, create_directory, rename_file, move_entry, delete_file, read_asset, save_image, search_content, open_external, open_in_explorer, open_attachment])
         .run(tauri::generate_context!()).expect("Falha ao iniciar MarkVault");
 }
 

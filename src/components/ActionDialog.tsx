@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
+import { isImageFile } from '../storage/types'
 import type { FileAction } from './FileTree'
 import { useWorkspace } from '../stores/workspaceStore'
 
@@ -16,8 +17,15 @@ export function ActionDialog({ action, onClose }: { action: FileAction; onClose(
     if (action.kind !== 'delete') {
       if (!path || /[\\:< >"|?*]/.test(path.replaceAll(' ', '')) || path.split('/').some(p => !p || p === '.' || p === '..')) { setValidation('Informe um nome válido, relativo ao workspace.'); return }
       if (action.kind !== 'copy' && path.includes('/')) { setValidation('Use apenas o nome do item, sem barras.'); return }
-      if (action.kind === 'file' || action.kind === 'copy' || (action.kind === 'rename' && !action.directory)) {
+      if (action.kind === 'file' || action.kind === 'copy') {
         if (!/\.md$/i.test(path)) path += '.md'
+      } else if (action.kind === 'rename' && !action.directory) {
+        if (isImageFile(action.path)) {
+          const origExt = action.path.split('.').pop() || 'png'
+          if (!isImageFile(path)) path += `.${origExt}`
+        } else if (!/\.md$/i.test(path)) {
+          path += '.md'
+        }
       }
     }
     setSubmitting(true)
