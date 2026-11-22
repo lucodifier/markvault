@@ -20,6 +20,7 @@ export interface StorageProvider {
   deleteFile(path: string, workspace?: string): Promise<void>
   watchChanges(callback: (workspace?: string) => void): Promise<() => void>
   readAsset(path: string, workspace?: string): Promise<string>
+  saveImage?(directory: string, name: string, dataBase64: string, workspace?: string): Promise<string>
   openExternal(url: string): Promise<void>
   openAttachment(path: string, workspace?: string): Promise<void>
 }

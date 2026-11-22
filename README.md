@@ -28,7 +28,7 @@ MarkVault é um aplicativo desktop que transforma uma pasta comum de arquivos `.
 - **Alterações externas:** watcher nativo atualiza árvore e documento; conflitos nunca sobrescrevem em silêncio.
 - **Markdown completo:** tabelas GFM, tarefas, blocos de código, imagens locais/HTTPS e links relativos entre notas.
 - **Mover arquivos:** arraste notas e pastas na árvore (inclusive entre pastas abertas) ou use **Mover para…** no menu.
-- **Leitura confortável:** modo Leitura com texto e largura ajustáveis (`Ctrl +`/`Ctrl -`); clique em um diagrama Mermaid para ampliar, com zoom e arrastar.
+- **Prints e imagens coladas:** tire um print e dê `Ctrl+V` no editor (ou solte uma imagem); o arquivo é salvo na mesma pasta da nota e exibido na hora. Clique em imagens ou diagramas Mermaid para ampliar.
 - **Produtividade:** copiar caminho absoluto, relativo ou link Markdown pelo menu de contexto.
 - **Segurança:** caminhos confinados à pasta, sem symlinks/junctions, HTML arbitrário não executa, anexos só de tipos permitidos.
 
@@ -44,7 +44,7 @@ MarkVault é um aplicativo desktop que transforma uma pasta comum de arquivos `.
 
 ## Instalação (Windows)
 
-1. Baixe `MarkVault_0.5.0_x64-setup.exe` na [página de releases](https://github.com/lucodifier/markvault/releases/latest).
+1. Baixe `MarkVault_0.6.0_x64-setup.exe` na [página de releases](https://github.com/lucodifier/markvault/releases/latest).
 2. Execute o instalador. Ele ainda **não é assinado**, então o SmartScreen pode avisar: clique em *Mais informações → Executar assim mesmo*.
 3. Abra o MarkVault, clique em **Abrir pasta local** e escolha sua pasta de notas.
 
@@ -85,7 +85,7 @@ React 18 · TypeScript · Vite 6 · Zustand · CodeMirror 6 · react-markdown + 
 
 Mais detalhes em [arquitetura](docs/ARCHITECTURE.md), [validação](docs/VALIDATION.md) e [continuidade](docs/CONTINUIDADE.md).
 
-## Limitações atuais (v0.5.0)
+## Limitações atuais (v0.6.0)
 
 - Um documento aberto por vez; sem abas.
 - Tema escuro apenas; sem grafo de notas, plugins ou IA.

@@ -1,14 +1,14 @@
 # Validação
 
-## Resultado observado — v0.4.0 (22/11/2026)
+## Resultado observado — v0.6.0 (22/11/2026)
 
 | Verificação | Resultado |
 | --- | --- |
 | `npm run lint` | PASS (zero avisos) |
 | `npm test` | PASS: 17 testes em 3 arquivos |
 | `npm run build` | PASS |
-| `npm run test:rust` | PASS: 11 testes |
-| `npm run desktop:build` | PASS: instalador NSIS `MarkVault_0.4.0_x64-setup.exe` (3,25 MiB) |
+| `npm run test:rust` | PASS: 12 testes |
+| `npm run desktop:build` | PASS: instalador NSIS `MarkVault_0.6.0_x64-setup.exe` (3,25 MiB) |
 | Operação real da janela Windows | Executado e testado manualmente pelo autor; funcional (v0.3.0 aprovada; 0.5.0 pendente de teste manual de arrastar/mover) |
 
 Ambiente: Node 24.18, Rust 1.99.1 (MSVC), Windows. O roteiro manual abaixo continua sendo a referência para regressões.
@@ -46,4 +46,4 @@ Para cada nova versão, registre versões de Node, Rust, Windows e WebView2 e os
 16. Preview: quebras de linha simples e bloco `mermaid` renderizado.
 17. Editor: URL https://... sublinhada; Ctrl+clique abre no navegador padrão e clique simples apenas edita.
 18. Mover: arraste uma nota para uma pasta, para a raiz e para outra pasta aberta; repita por **Mover para…**. Confirme nome duplicado recusado e pasta dentro dela mesma bloqueada. Com a nota aberta, ela deve seguir aberta no novo local.
-19. Mermaid: clique no diagrama, use roda do mouse, botões, arrastar, 1:1 e Esc. Leitura: A−/A+, Ctrl +/−/0 e as três larguras; reabra o app e confirme que a preferência persiste.
+19. Mermaid e imagens: clique em um diagrama ou imagem para ampliar. Cole um print (`Ctrl+V`) no editor e confirme que o `.png` é criado na mesma pasta da nota e renderizado no Preview.

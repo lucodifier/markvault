@@ -1,4 +1,6 @@
 import { Children, isValidElement, useEffect, useState } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
+import { X } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import { MermaidDiagram } from './MermaidDiagram'
 import remarkGfm from 'remark-gfm'
@@ -10,6 +12,7 @@ import { useWorkspace } from '../stores/workspaceStore'
 function LocalImage({ source, alt, document, workspacePath }: { source?: string; alt?: string; document: string; workspacePath: string }) {
   const [url, setUrl] = useState<string>()
   const [error, setError] = useState<string>()
+  const [open, setOpen] = useState(false)
   useEffect(() => {
     let alive = true
     setUrl(undefined); setError(undefined)
@@ -20,7 +23,24 @@ function LocalImage({ source, alt, document, workspacePath }: { source?: string;
     return () => { alive = false }
   }, [source, document, workspacePath])
   if (error) return <span className="image-error" title={error}>Imagem indisponível: {alt || source}</span>
-  return url ? <img src={url} alt={alt || ''} loading="lazy" /> : <span className="muted">Carregando imagem…</span>
+  if (!url) return <span className="muted">Carregando imagem…</span>
+  return <>
+    <img src={url} alt={alt || ''} loading="lazy" className="clickable-image" title="Clique para ampliar" onClick={() => setOpen(true)} />
+    {open && <Dialog.Root open onOpenChange={v => { if (!v) setOpen(false) }}><Dialog.Portal>
+      <Dialog.Overlay className="modal-overlay" />
+      <Dialog.Content className="diagram-viewer" aria-describedby={undefined}>
+        <Dialog.Title className="sr-only">{alt || 'Imagem ampliada'}</Dialog.Title>
+        <div className="diagram-toolbar">
+          <span className="diagram-zoom">{alt || source}</span>
+          <span className="diagram-help">Esc fecha</span>
+          <Dialog.Close className="icon-button" aria-label="Fechar"><X size={18} /></Dialog.Close>
+        </div>
+        <div className="diagram-scroll" onClick={() => setOpen(false)}>
+          <img src={url} alt={alt || ''} className="image-viewer-img" onClick={e => e.stopPropagation()} />
+        </div>
+      </Dialog.Content>
+    </Dialog.Portal></Dialog.Root>}
+  </>
 }
 
 export function MarkdownPreview({ content, path, workspacePath }: { content: string; path: string; workspacePath: string }) {

@@ -1,10 +1,10 @@
-# Continuidade — MarkVault 0.5.0
+# Continuidade — MarkVault 0.6.0
 
 Registro de estado atualizado em **22/11/2026**.
 
 ## Estado da versão
 
-Versão **0.5.0** estável, validada (lint, Vitest, build e testes Rust) e distribuída como instalador NSIS na página de releases do GitHub. Decisão do autor: a versão atual está boa; **não alterar código sem nova demanda**.
+Versão **0.6.0** estável, validada (lint, Vitest, build e testes Rust) e distribuída como instalador NSIS na página de releases do GitHub. Decisão do autor: a versão atual está boa; **não alterar código sem nova demanda**.
 
 Histórico resumido:
 
@@ -12,7 +12,8 @@ Histórico resumido:
 - **0.2.0** — várias pastas abertas, menu de contexto (copiar caminho/link), associação de arquivos `.md`, quebras de linha e diagramas Mermaid.
 - **0.3.0** — URLs no editor ficam sublinhadas e abrem no navegador padrão com Ctrl/Cmd+clique.
 - **0.4.0** — mover arquivos e pastas arrastando na árvore ou por **Mover para…**, inclusive entre workspaces abertos (comando `move_entry`).
-- **0.5.0** — diagramas Mermaid abrem ampliados ao clicar (zoom e arrastar); modo Leitura com tamanho de texto (A−/A+, Ctrl +/−/0) e largura ajustáveis.
+- **0.5.0** — diagramas Mermaid abrem ampliados ao clicar (zoom e arrastar) e modo Leitura ampliado.
+- **0.6.0** — colar print (`Ctrl+V`) ou soltar imagem no editor salva o arquivo na mesma pasta da nota e insere `![](...)` automaticamente; imagens abrem ampliadas ao clicar.
 
 O escopo original está em [`prompt.md`](prompt.md). A referência de stack foi o Alethe (somente leitura). Manter React 18, TypeScript, Vite 6, Tauri 2/Rust, Zustand 5, CSS próprio, Lucide, React Markdown/GFM, Radix Dialog e CodeMirror 6.
 

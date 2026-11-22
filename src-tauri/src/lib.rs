@@ -329,6 +329,13 @@ fn read_asset(state: State<AppState>, path: String, workspace: Option<String>) -
     })
 }
 #[tauri::command]
+fn save_image(state: State<AppState>, directory: String, name: String, data_base64: String, workspace: Option<String>) -> Result<String> {
+    with_workspace(&state, workspace.as_deref(), |p| {
+        let bytes = base64::engine::general_purpose::STANDARD.decode(data_base64.trim()).map_err(|e| format!("Imagem inválida: {e}"))?;
+        p.save_image(&directory, &name, &bytes)
+    })
+}
+#[tauri::command]
 fn open_external(app: tauri::AppHandle, url: String) -> Result<()> {
     let lower = url.to_lowercase();
     if !lower.starts_with("https://") && !lower.starts_with("http://") && !lower.starts_with("mailto:") { return Err("Link não permitido.".into()); }
@@ -365,7 +372,7 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![open_workspace, remove_workspace, restore_workspace, consume_external_open, list_files, read_file, write_file, create_file, create_directory, rename_file, move_entry, delete_file, read_asset, search_content, open_external, open_attachment])
+        .invoke_handler(tauri::generate_handler![open_workspace, remove_workspace, restore_workspace, consume_external_open, list_files, read_file, write_file, create_file, create_directory, rename_file, move_entry, delete_file, read_asset, save_image, search_content, open_external, open_attachment])
         .run(tauri::generate_context!()).expect("Falha ao iniciar MarkVault");
 }
 

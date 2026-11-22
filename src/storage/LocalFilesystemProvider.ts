@@ -20,6 +20,7 @@ export class LocalFilesystemProvider implements StorageProvider {
   moveEntry = (path: string, workspace: string, destination: string, destinationWorkspace: string) => this.call<void>('move_entry', { path, workspace, destination, destinationWorkspace })
   deleteFile = (path: string, workspace?: string) => this.call<void>('delete_file', { path, workspace })
   readAsset = (path: string, workspace?: string) => this.call<string>('read_asset', { path, workspace })
+  saveImage = (directory: string, name: string, dataBase64: string, workspace?: string) => this.call<string>('save_image', { directory, name, dataBase64, workspace })
   openExternal = (url: string) => this.call<void>('open_external', { url })
   openAttachment = (path: string, workspace?: string) => this.call<void>('open_attachment', { path, workspace })
   async watchChanges(callback: (workspace?: string) => void) {

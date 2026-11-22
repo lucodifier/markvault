@@ -18,12 +18,9 @@ export function App() {
   const [content, setContent] = useState(false)
   const [sidebar, setSidebar] = useState(true)
   const [width, setWidth] = useState(() => { try { return Number(localStorage.getItem('markvault:sidebar')) || 270 } catch { return 270 } })
-  const [readSize, setReadSize] = useState(() => { try { return Math.min(30, Math.max(13, Number(localStorage.getItem('markvault:read-size')) || 17)) } catch { return 17 } })
-  const [readWide, setReadWide] = useState(() => { try { return Math.min(2, Math.max(0, Number(localStorage.getItem('markvault:read-width')) || 0)) } catch { return 0 } })
   const d = s.document
   const activeWorkspace = d ? (s.workspaces.find(w => w.path === d.workspacePath) ?? s.workspace) : s.workspace
   const reading = s.mode === 'reading' && !!d
-  useEffect(() => { try { localStorage.setItem('markvault:read-size', String(readSize)); localStorage.setItem('markvault:read-width', String(readWide)) } catch { /* Preferences are optional. */ } }, [readSize, readWide])
   const dirty = !!d && d.content !== d.saved
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
@@ -35,11 +32,6 @@ export function App() {
         event.preventDefault()
         const ws = useWorkspace.getState().workspace
         if (ws) setAction({ kind: 'file', workspacePath: ws.path, path: '' })
-      }
-      if (useWorkspace.getState().mode === 'reading') {
-        if (event.key === '+' || event.key === '=') { event.preventDefault(); setReadSize(v => Math.min(30, v + 1)) }
-        if (event.key === '-') { event.preventDefault(); setReadSize(v => Math.max(13, v - 1)) }
-        if (event.key === '0') { event.preventDefault(); setReadSize(17); setReadWide(0) }
       }
       if (event.key === '\\') { event.preventDefault(); setSidebar(v => !v) }
     }
@@ -65,7 +57,6 @@ export function App() {
         {d && <div className="mode-switch" aria-label="Modo de visualização">{([
           ['markdown', Code2, 'Markdown'], ['split', Columns2, 'Dividido'], ['preview', FileText, 'Preview'], ['reading', BookOpen, 'Leitura'],
         ] as const).map(([mode, Icon, title]) => <button key={mode} title={title} aria-label={title} aria-pressed={s.mode === mode} className={s.mode === mode ? 'active' : ''} onClick={() => s.setMode(mode)}><Icon size={15} /><span>{title}</span></button>)}</div>}
-        {reading && <div className="reading-controls" aria-label="Tamanho da leitura"><button className="icon-button" title="Diminuir texto (Ctrl+-)" aria-label="Diminuir texto" onClick={() => setReadSize(v => Math.max(13, v - 1))}>A−</button><span>{readSize}px</span><button className="icon-button" title="Aumentar texto (Ctrl++)" aria-label="Aumentar texto" onClick={() => setReadSize(v => Math.min(30, v + 1))}>A+</button><button className="icon-button" title="Largura da página: normal, larga, total" aria-label="Alternar largura" onClick={() => setReadWide(v => (v + 1) % 3)}>{['Normal', 'Larga', 'Total'][readWide]}</button></div>}
         {!reading && <button className="icon-button" title="Salvar (Ctrl+S)" aria-label="Salvar documento" disabled={!dirty || s.saving || !!s.conflict} onClick={() => void s.save()}><Save size={17} /></button>}
       </header>
       {s.error && <div className="banner error" role="alert"><span>{s.error}</span><button onClick={s.dismissError} className="icon-button" aria-label="Dispensar erro"><X size={16} /></button></div>}

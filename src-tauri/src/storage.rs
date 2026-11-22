@@ -4,6 +4,7 @@ use std::{fs, io::Write, path::{Component, Path, PathBuf}};
 
 pub type Result<T> = std::result::Result<T, String>;
 const MAX_DOCUMENT: u64 = 16 * 1024 * 1024;
+const MAX_IMAGE: u64 = 20 * 1024 * 1024;
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Snapshot { pub content: String, pub revision: String }
@@ -168,6 +169,37 @@ impl LocalFilesystemProvider {
         let target = self.resolve(path, true)?;
         if target.is_dir() { fs::remove_dir_all(target) } else { self.markdown(path, true)?; fs::remove_file(target) }.map_err(|e| e.to_string())
     }
+    /// Saves a pasted image into the same folder as the current document, picking a unique name.
+    pub fn save_image(&self, directory: &str, name: &str, bytes: &[u8]) -> Result<String> {
+        if bytes.is_empty() { return Err("A imagem está vazia.".into()); }
+        if bytes.len() as u64 > MAX_IMAGE { return Err("Imagem excede 20 MB.".into()); }
+        let ext = Path::new(name).extension().unwrap_or_default().to_string_lossy().to_lowercase();
+        let ext = match ext.as_str() {
+            "png" | "jpg" | "jpeg" | "gif" | "webp" | "avif" => ext.as_str(),
+            _ => return Err("Formato de imagem não suportado. Use PNG, JPEG, GIF, WebP ou AVIF.".into()),
+        };
+        let stem: String = Path::new(name).file_stem().unwrap_or_default().to_string_lossy()
+            .chars()
+            .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '-' })
+            .collect();
+        let stem = stem.trim_matches('-');
+        let stem = if stem.is_empty() { "imagem" } else { stem };
+        let dir = directory.trim_matches('/');
+        for attempt in 0..1000u32 {
+            let file_name = if attempt == 0 { format!("{stem}.{ext}") } else { format!("{stem}-{attempt}.{ext}") };
+            let rel = if dir.is_empty() { file_name.clone() } else { format!("{dir}/{file_name}") };
+            let target = self.resolve(&rel, false)?;
+            match fs::OpenOptions::new().write(true).create_new(true).open(&target) {
+                Ok(mut file) => {
+                    file.write_all(bytes).and_then(|_| file.sync_all()).map_err(|e| e.to_string())?;
+                    return Ok(file_name);
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(e) => return Err(e.to_string()),
+            }
+        }
+        Err("Não foi possível gerar um nome único para a imagem.".into())
+    }
 }
 fn collect_documents(entries: Vec<Entry>, files: &mut Vec<(String, String)>) {
     for entry in entries {
@@ -193,6 +225,17 @@ fn snapshot(content: String) -> Snapshot { let revision = format!("{:x}", Sha256
 mod tests {
     use super::*;
     fn vault() -> (tempfile::TempDir, LocalFilesystemProvider) { let d = tempfile::tempdir().unwrap(); let p = LocalFilesystemProvider::new(d.path()).unwrap(); (d, p) }
+    #[test] fn saves_pasted_images_with_unique_names_in_document_folder() {
+        let (d, p) = vault(); p.mkdir("Notas").unwrap();
+        let first = p.save_image("Notas", "print.png", &[137, 80, 78, 71]).unwrap();
+        let second = p.save_image("Notas", "print.png", &[137, 80, 78, 71]).unwrap();
+        assert_eq!(first, "print.png");
+        assert_eq!(second, "print-1.png");
+        assert!(d.path().join("Notas/print.png").is_file());
+        assert!(d.path().join("Notas/print-1.png").is_file());
+        assert!(p.save_image("Notas", "bad.exe", &[1]).is_err());
+        assert!(p.save_image("../fora", "a.png", &[1]).is_err());
+    }
     #[test] fn moves_between_workspaces_and_blocks_cycles() {
         let (_a, from) = vault(); let (_b, to) = vault();
         from.create("nota.md", "oi").unwrap(); from.mkdir("pasta").unwrap(); from.create("pasta/x.md", "x").unwrap(); to.mkdir("destino").unwrap();
