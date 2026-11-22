@@ -27,6 +27,7 @@ MarkVault é um aplicativo desktop que transforma uma pasta comum de arquivos `.
 - **Salvamento seguro:** autosave em 700 ms, escrita atômica com verificação de revisão SHA-256 e rascunhos de emergência para recuperação.
 - **Alterações externas:** watcher nativo atualiza árvore e documento; conflitos nunca sobrescrevem em silêncio.
 - **Markdown completo:** tabelas GFM, tarefas, blocos de código, imagens locais/HTTPS e links relativos entre notas.
+- **Mover arquivos:** arraste notas e pastas na árvore (inclusive entre pastas abertas) ou use **Mover para…** no menu.
 - **Produtividade:** copiar caminho absoluto, relativo ou link Markdown pelo menu de contexto.
 - **Segurança:** caminhos confinados à pasta, sem symlinks/junctions, HTML arbitrário não executa, anexos só de tipos permitidos.
 
@@ -42,7 +43,7 @@ MarkVault é um aplicativo desktop que transforma uma pasta comum de arquivos `.
 
 ## Instalação (Windows)
 
-1. Baixe `MarkVault_0.3.0_x64-setup.exe` na [página de releases](https://github.com/lucodifier/markvault/releases/latest).
+1. Baixe `MarkVault_0.4.0_x64-setup.exe` na [página de releases](https://github.com/lucodifier/markvault/releases/latest).
 2. Execute o instalador. Ele ainda **não é assinado**, então o SmartScreen pode avisar: clique em *Mais informações → Executar assim mesmo*.
 3. Abra o MarkVault, clique em **Abrir pasta local** e escolha sua pasta de notas.
 
@@ -83,7 +84,7 @@ React 18 · TypeScript · Vite 6 · Zustand · CodeMirror 6 · react-markdown + 
 
 Mais detalhes em [arquitetura](docs/ARCHITECTURE.md), [validação](docs/VALIDATION.md) e [continuidade](docs/CONTINUIDADE.md).
 
-## Limitações atuais (v0.3.0)
+## Limitações atuais (v0.4.0)
 
 - Um documento aberto por vez; sem abas.
 - Tema escuro apenas; sem grafo de notas, plugins ou IA.

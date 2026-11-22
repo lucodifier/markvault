@@ -9,7 +9,7 @@ export function ActionDialog({ action, onClose }: { action: FileAction; onClose(
   const [name, setName] = useState(action.kind === 'rename' ? action.path.split('/').pop()! : action.kind === 'copy' ? `${action.path.replace(/\.md$/i, '')}-copia.md` : '')
   const [validation, setValidation] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const title = { file: 'Novo documento', directory: 'Nova pasta', rename: 'Renomear', delete: 'Excluir item?', copy: 'Salvar uma cópia' }[action.kind]
+  const title = { file: 'Novo documento', directory: 'Nova pasta', rename: 'Renomear', delete: 'Excluir item?', copy: 'Salvar uma cópia', move: 'Mover' }[action.kind]
   const submit = async () => {
     if (submitting) return
     let path = name.trim()

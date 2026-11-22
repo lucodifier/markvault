@@ -1,15 +1,15 @@
-﻿# Validação
+# Validação
 
-## Resultado observado — v0.3.0 (22/11/2026)
+## Resultado observado — v0.4.0 (22/11/2026)
 
 | Verificação | Resultado |
 | --- | --- |
 | `npm run lint` | PASS (zero avisos) |
 | `npm test` | PASS: 17 testes em 3 arquivos |
 | `npm run build` | PASS |
-| `npm run test:rust` | PASS: 10 testes |
-| `npm run desktop:build` | PASS: instalador NSIS `MarkVault_0.3.0_x64-setup.exe` (3,25 MiB) |
-| Operação real da janela Windows | Executado e testado manualmente pelo autor; funcional (v0.3.0 aprovada) |
+| `npm run test:rust` | PASS: 11 testes |
+| `npm run desktop:build` | PASS: instalador NSIS `MarkVault_0.4.0_x64-setup.exe` (3,25 MiB) |
+| Operação real da janela Windows | Executado e testado manualmente pelo autor; funcional (v0.3.0 aprovada; 0.4.0 pendente de teste manual de arrastar/mover) |
 
 Ambiente: Node 24.18, Rust 1.99.1 (MSVC), Windows. O roteiro manual abaixo continua sendo a referência para regressões.
 
@@ -38,10 +38,11 @@ Use uma pasta temporária com documentos e anexos de teste, sem dados únicos.
 Para cada nova versão, registre versões de Node, Rust, Windows e WebView2 e os resultados efetivos.
 
 
-## Roteiro adicional (0.2.0 e 0.3.0)
+## Roteiro adicional (0.2.0 e 0.4.0)
 
 13. Abra duas ou mais pastas; confirme árvore, busca e edição em cada uma e restauração após reiniciar.
 14. Abra um .md pelo Explorer (associação) e uma pasta por argumento de linha de comando.
 15. Menu de contexto: copiar caminho absoluto, relativo e link Markdown.
 16. Preview: quebras de linha simples e bloco `mermaid` renderizado.
 17. Editor: URL https://... sublinhada; Ctrl+clique abre no navegador padrão e clique simples apenas edita.
+18. Mover: arraste uma nota para uma pasta, para a raiz e para outra pasta aberta; repita por **Mover para…**. Confirme nome duplicado recusado e pasta dentro dela mesma bloqueada. Com a nota aberta, ela deve seguir aberta no novo local.

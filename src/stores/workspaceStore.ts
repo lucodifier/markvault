@@ -27,6 +27,7 @@ interface State {
   dismissError(): void
   create(path: string, directory: boolean, workspacePath?: string): Promise<boolean>
   rename(path: string, destination: string, workspacePath?: string): Promise<boolean>
+  move(path: string, workspacePath: string, destinationDir: string, destinationWorkspace: string): Promise<boolean>
   remove(path: string, workspacePath?: string): Promise<boolean>
   reload(): Promise<void>
   overwrite(): Promise<void>
@@ -354,6 +355,31 @@ export function makeWorkspaceStore(provider: StorageProvider) {
           writeLastActive(root, nextPath)
         }
       }),
+      async move(path, workspacePath, destinationDir, destinationWorkspace) {
+        if (get().busy || !provider.moveEntry) return false
+        const name = path.split('/').pop()!
+        const destination = [destinationDir, name].filter(Boolean).join('/')
+        if (workspacePath === destinationWorkspace && (destination === path || destinationDir === path || destinationDir.startsWith(path + '/'))) {
+          if (destination !== path) set({ error: 'Não é possível mover uma pasta para dentro dela mesma.' })
+          return false
+        }
+        set({ busy: true, error: null })
+        try {
+          if (!(await get().save())) return false
+          await provider.moveEntry(path, workspacePath, destination, destinationWorkspace)
+          const d = get().document
+          if (d && d.workspacePath === workspacePath && (d.path === path || d.path.startsWith(path + '/'))) {
+            recovery.remove(workspacePath, d.path)
+            const nextPath = destination + d.path.slice(path.length)
+            set({ document: { ...d, workspacePath: destinationWorkspace, path: nextPath } })
+            writeLastActive(destinationWorkspace, nextPath)
+          }
+          await get().refresh(workspacePath)
+          if (destinationWorkspace !== workspacePath) await get().refresh(destinationWorkspace)
+          set({ notice: `Movido: ${name}` })
+          return true
+        } catch (e) { fail(e); return false } finally { set({ busy: false }) }
+      },
       remove: (path, workspacePath) => mutate(workspacePath, async root => {
         await provider.deleteFile(path, root)
         const d = get().document

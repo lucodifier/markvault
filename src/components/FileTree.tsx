@@ -1,10 +1,13 @@
-import { useState } from 'react'
+import { useState, type DragEvent } from 'react'
 import { ChevronRight, FileText, Folder, FolderOpen, MoreHorizontal } from 'lucide-react'
 import type { FileEntry, Workspace } from '../storage/types'
 import { useWorkspace } from '../stores/workspaceStore'
 
-export type FileAction = { kind: 'file' | 'directory' | 'rename' | 'delete' | 'copy'; workspacePath: string; path: string; directory?: boolean }
-interface Props { entries: FileEntry[]; root: string; active?: string; disabled: boolean; onOpen(path: string, workspacePath: string): void; onAction(action: FileAction): void }
+export type FileAction = { kind: 'file' | 'directory' | 'rename' | 'delete' | 'copy' | 'move'; workspacePath: string; path: string; directory?: boolean }
+interface Props { entries: FileEntry[]; root: string; active?: string; disabled: boolean; onOpen(path: string, workspacePath: string): void; onAction(action: FileAction): void; onMove(path: string, root: string, destinationDir: string, destinationRoot: string): void }
+
+// Entry being dragged; HTML5 drag data is unreadable during dragover, so it lives here.
+let dragged: { path: string; root: string } | null = null
 
 /** Absolute Windows path of a workspace-relative entry. */
 function absolutePath(root: string, path?: string) {
@@ -37,7 +40,7 @@ async function copyText(text: string) {
 }
 
 export function ProjectSection({
-  workspace, entries, activePath, disabled, onOpen, onAction, onRefresh, onRemoveWorkspace,
+  workspace, entries, activePath, disabled, onOpen, onAction, onMove, onRefresh, onRemoveWorkspace,
 }: {
   workspace: Workspace
   entries: FileEntry[]
@@ -45,12 +48,14 @@ export function ProjectSection({
   disabled: boolean
   onOpen(path: string, workspacePath: string): void
   onAction(action: FileAction): void
+  onMove(path: string, root: string, destinationDir: string, destinationRoot: string): void
   onRefresh(workspacePath: string): void
   onRemoveWorkspace(workspacePath: string): void
 }) {
   const expanded = useWorkspace(s => s.expanded[workspace.path] ?? true)
   const toggleExpanded = useWorkspace(s => s.toggleExpanded)
   const [menu, setMenu] = useState(false)
+  const drop = useDropTarget(workspace.path, '', onMove)
   const copyRoot = async () => {
     setMenu(false)
     const text = absolutePath(workspace.path)
@@ -62,7 +67,7 @@ export function ProjectSection({
     }
   }
   return <section className="project-section">
-    <div className="tree-row project-row" onContextMenu={event => { event.preventDefault(); setMenu(true) }}>
+    <div className={`tree-row project-row ${drop.over ? 'drop-over' : ''}`} {...drop.handlers} onContextMenu={event => { event.preventDefault(); setMenu(true) }}>
       <button className="tree-item project-item" title={workspace.path} disabled={disabled} aria-expanded={expanded} onClick={() => toggleExpanded(workspace.path, true)}>
         <ChevronRight size={13} className={expanded ? 'rotated' : ''} />
         {expanded ? <FolderOpen size={15} /> : <Folder size={15} />}
@@ -79,7 +84,7 @@ export function ProjectSection({
     </div>}
     <div className="project-tree" style={expanded ? undefined : { display: 'none' }}>
       {entries.length
-        ? <FileTree entries={entries} root={workspace.path} active={activePath} disabled={disabled} onOpen={onOpen} onAction={onAction} />
+        ? <FileTree entries={entries} root={workspace.path} active={activePath} disabled={disabled} onOpen={onOpen} onAction={onAction} onMove={onMove} />
         : <p className="project-empty">Pasta vazia.</p>}
     </div>
   </section>
@@ -93,6 +98,7 @@ function TreeItem({ entry, ...props }: Props & { entry: FileEntry }) {
   const expanded = useWorkspace(s => s.expanded[expandKey] ?? true)
   const toggleExpanded = useWorkspace(s => s.toggleExpanded)
   const [menu, setMenu] = useState(false)
+  const drop = useDropTarget(props.root, entry.directory ? entry.path : entry.path.split('/').slice(0, -1).join('/'), props.onMove)
   const copy = async (text: string) => {
     setMenu(false)
     try {
@@ -103,7 +109,7 @@ function TreeItem({ entry, ...props }: Props & { entry: FileEntry }) {
     }
   }
   return <li>
-    <div className={`tree-row ${entry.path === props.active ? 'selected' : ''}`} onContextMenu={event => { event.preventDefault(); setMenu(true) }}>
+    <div className={`tree-row ${entry.path === props.active ? 'selected' : ''} ${drop.over ? 'drop-over' : ''}`} {...drop.handlers} draggable={!props.disabled} onDragStart={event => { dragged = { path: entry.path, root: props.root }; event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', entry.path) }} onDragEnd={() => { dragged = null }} onContextMenu={event => { event.preventDefault(); setMenu(true) }}>
       <button className="tree-item" title={entry.path} disabled={props.disabled} aria-expanded={entry.directory ? expanded : undefined} onClick={() => entry.directory ? toggleExpanded(expandKey, true) : props.onOpen(entry.path, props.root)}>
         {entry.directory ? <><ChevronRight size={13} className={expanded ? 'rotated' : ''} />{expanded ? <FolderOpen size={15} /> : <Folder size={15} />}</> : <><span className="tree-indent" /><FileText size={15} /></>}
         <span>{entry.name}</span>
@@ -115,10 +121,31 @@ function TreeItem({ entry, ...props }: Props & { entry: FileEntry }) {
       <button role="menuitem" onClick={() => void copy(entry.path)}>Copiar caminho relativo</button>
       {!entry.directory && <button role="menuitem" onClick={() => void copy(markdownLink(entry.name, entry.path))}>Copiar link Markdown</button>}
       {entry.directory && <><button role="menuitem" onClick={() => { setMenu(false); props.onAction({ kind: 'file', workspacePath: props.root, path: entry.path }) }}>Novo documento</button><button role="menuitem" onClick={() => { setMenu(false); props.onAction({ kind: 'directory', workspacePath: props.root, path: entry.path }) }}>Nova pasta</button></>}
+      <button role="menuitem" onClick={() => { setMenu(false); props.onAction({ kind: 'move', workspacePath: props.root, path: entry.path, directory: entry.directory }) }}>Mover para…</button>
       <button role="menuitem" onClick={() => { setMenu(false); props.onAction({ kind: 'rename', workspacePath: props.root, path: entry.path, directory: entry.directory }) }}>Renomear</button>
       <button role="menuitem" className="danger-text" onClick={() => { setMenu(false); props.onAction({ kind: 'delete', workspacePath: props.root, path: entry.path, directory: entry.directory }) }}>Excluir…</button>
     </div>}
     {/* Keep children mounted and persisted so each folder's open/closed state survives collapsing the parent or restarting. */}
     {entry.directory && <div style={expanded ? undefined : { display: 'none' }}><FileTree {...props} entries={entry.children} /></div>}
   </li>
+}
+
+/** Drop handlers that move the dragged entry into a directory of the given workspace. */
+function useDropTarget(root: string, directory: string, onMove: Props['onMove']) {
+  const [over, setOver] = useState(false)
+  const valid = () => !!dragged && !(dragged.root === root && (dragged.path === directory || directory.startsWith(dragged.path + '/')))
+  return {
+    over,
+    handlers: {
+      onDragOver(event: DragEvent) { if (!valid()) return; event.preventDefault(); event.dataTransfer.dropEffect = 'move'; setOver(true) },
+      onDragLeave() { setOver(false) },
+      onDrop(event: DragEvent) {
+        setOver(false)
+        if (!dragged || !valid()) return
+        event.preventDefault(); event.stopPropagation()
+        const item = dragged; dragged = null
+        onMove(item.path, item.root, directory, root)
+      },
+    },
+  }
 }

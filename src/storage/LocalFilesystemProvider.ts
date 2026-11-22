@@ -17,6 +17,7 @@ export class LocalFilesystemProvider implements StorageProvider {
   createFile = (path: string, content = '', workspace?: string) => this.call<void>('create_file', { path, content, workspace })
   createDirectory = (path: string, workspace?: string) => this.call<void>('create_directory', { path, workspace })
   renameFile = (path: string, destination: string, workspace?: string) => this.call<void>('rename_file', { path, destination, workspace })
+  moveEntry = (path: string, workspace: string, destination: string, destinationWorkspace: string) => this.call<void>('move_entry', { path, workspace, destination, destinationWorkspace })
   deleteFile = (path: string, workspace?: string) => this.call<void>('delete_file', { path, workspace })
   readAsset = (path: string, workspace?: string) => this.call<string>('read_asset', { path, workspace })
   openExternal = (url: string) => this.call<void>('open_external', { url })

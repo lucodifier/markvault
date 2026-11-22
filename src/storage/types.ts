@@ -16,6 +16,7 @@ export interface StorageProvider {
   createFile(path: string, content?: string, workspace?: string): Promise<void>
   createDirectory(path: string, workspace?: string): Promise<void>
   renameFile(path: string, destination: string, workspace?: string): Promise<void>
+  moveEntry?(path: string, workspace: string, destination: string, destinationWorkspace: string): Promise<void>
   deleteFile(path: string, workspace?: string): Promise<void>
   watchChanges(callback: (workspace?: string) => void): Promise<() => void>
   readAsset(path: string, workspace?: string): Promise<string>

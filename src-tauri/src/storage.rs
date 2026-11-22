@@ -133,6 +133,18 @@ impl LocalFilesystemProvider {
         if target.exists() { return Err("Já existe um item com esse nome.".into()); }
         fs::rename(source, target).map_err(|e| e.to_string())
     }
+    /// Moves a file or folder into another workspace (or this one). Falls back to copy + delete
+    /// when a plain rename is impossible, e.g. across drives.
+    pub fn move_to(&self, other: &Self, path: &str, destination: &str) -> Result<()> {
+        let source = self.resolve(path, true)?;
+        let target = other.resolve(destination, false)?;
+        if source.is_file() { self.markdown(path, true)?; other.markdown(destination, false)?; }
+        if target.exists() { return Err("Já existe um item com esse nome na pasta de destino.".into()); }
+        if target.starts_with(&source) { return Err("Não é possível mover uma pasta para dentro dela mesma.".into()); }
+        if fs::rename(&source, &target).is_ok() { return Ok(()); }
+        copy_tree(&source, &target)?;
+        if source.is_dir() { fs::remove_dir_all(&source) } else { fs::remove_file(&source) }.map_err(|e| e.to_string())
+    }
     // Content search reads every document, so it follows the same listing rules (no VCS or
     // dependency folders, no links) and the same per-file limits as `read`.
     pub fn search(&self, query: &str, limit: usize) -> Result<Vec<ContentMatch>> {
@@ -181,6 +193,18 @@ fn snapshot(content: String) -> Snapshot { let revision = format!("{:x}", Sha256
 mod tests {
     use super::*;
     fn vault() -> (tempfile::TempDir, LocalFilesystemProvider) { let d = tempfile::tempdir().unwrap(); let p = LocalFilesystemProvider::new(d.path()).unwrap(); (d, p) }
+    #[test] fn moves_between_workspaces_and_blocks_cycles() {
+        let (_a, from) = vault(); let (_b, to) = vault();
+        from.create("nota.md", "oi").unwrap(); from.mkdir("pasta").unwrap(); from.create("pasta/x.md", "x").unwrap(); to.mkdir("destino").unwrap();
+        from.move_to(&to, "nota.md", "destino/nota.md").unwrap();
+        assert!(from.read("nota.md").is_err()); assert_eq!(to.read("destino/nota.md").unwrap().content, "oi");
+        from.move_to(&to, "pasta", "destino/pasta").unwrap();
+        assert_eq!(to.read("destino/pasta/x.md").unwrap().content, "x");
+        to.create("a.md", "1").unwrap(); to.create("destino/a.md", "2").unwrap();
+        assert!(to.move_to(&to, "a.md", "destino/a.md").is_err());
+        assert!(to.move_to(&to, "destino", "destino/pasta/destino").is_err());
+        assert_eq!(to.read("a.md").unwrap().content, "1");
+    }
     #[test] fn lifecycle_utf8() {
         let (_d, p) = vault(); p.mkdir("Estudos").unwrap(); p.create("Estudos/ação.md", "# Olá 🌱").unwrap();
         let old = p.read("Estudos/ação.md").unwrap(); assert_eq!(old.content, "# Olá 🌱");
@@ -241,5 +265,21 @@ mod tests {
         let status = std::process::Command::new("cmd").args(["/c", "mklink", "/J"]).arg(d.path().join("link")).arg(outside.path()).status().unwrap();
         assert!(status.success()); assert!(p.create("link/escape.md", "bad").is_err());
         assert!(p.list().unwrap().is_empty()); fs::remove_dir(d.path().join("link")).unwrap();
+    }
+}
+
+
+fn copy_tree(source: &Path, target: &Path) -> Result<()> {
+    let meta = fs::symlink_metadata(source).map_err(|e| e.to_string())?;
+    check_not_link(&meta)?;
+    if meta.is_dir() {
+        fs::create_dir(target).map_err(|e| e.to_string())?;
+        for entry in fs::read_dir(source).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            copy_tree(&entry.path(), &target.join(entry.file_name()))?;
+        }
+        Ok(())
+    } else {
+        fs::copy(source, target).map(|_| ()).map_err(|e| e.to_string())
     }
 }

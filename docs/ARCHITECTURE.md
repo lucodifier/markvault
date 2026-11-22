@@ -1,4 +1,4 @@
-﻿# Arquitetura e decisões
+# Arquitetura e decisões
 
 ```text
 src/
@@ -17,7 +17,7 @@ site/            landing page (GitHub Pages)
 
 ## Fluxo de dados
 
-Os componentes usam o store Zustand. O store recebe um `StorageProvider`, com operações de listagem, leitura, escrita, criação, renomeação, exclusão e observação. O adaptador `LocalFilesystemProvider` traduz essas operações em comandos Tauri. O backend mantém somente as pastas escolhidas pelo seletor nativo, abertas via associação de arquivo .md/argumento de linha de comando ou previamente autorizadas, persistidas nos dados da aplicação. Várias pastas podem ficar abertas ao mesmo tempo; cada comando recebe o workspace alvo e há um watcher por pasta.
+Os componentes usam o store Zustand. O store recebe um `StorageProvider`, com operações de listagem, leitura, escrita, criação, renomeação, exclusão e observação. O adaptador `LocalFilesystemProvider` traduz essas operações em comandos Tauri. O backend mantém somente as pastas escolhidas pelo seletor nativo, abertas via associação de arquivo .md/argumento de linha de comando ou previamente autorizadas, persistidas nos dados da aplicação. Várias pastas podem ficar abertas ao mesmo tempo; cada comando recebe o workspace alvo e há um watcher por pasta. Mover itens (arrastar ou menu) usa `move_entry`, que aceita origem e destino em workspaces diferentes, tenta `rename` e, se falhar (outro disco), copia e apaga a origem.
 
 O editor recebe texto e devolve alterações; não conhece IPC, caminhos absolutos, Google Drive ou Git. A renderização recebe o documento, aplica GFM e quebras de linha, renderiza blocos `mermaid` como diagramas e resolve links relativos pelo adaptador. No editor, URLs http(s) são sublinhadas e abertas no navegador padrão com Ctrl/Cmd+clique, via comando open_external do backend. Os componentes não chamam `invoke` diretamente.
 

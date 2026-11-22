@@ -278,6 +278,13 @@ fn rename_file(state: State<AppState>, path: String, destination: String, worksp
     with_workspace(&state, workspace.as_deref(), |p| p.rename(&path, &destination))
 }
 #[tauri::command]
+fn move_entry(state: State<AppState>, path: String, workspace: String, destination: String, destination_workspace: String) -> Result<()> {
+    let guard = state.0.lock().map_err(|e| e.to_string())?;
+    let find = |id: &str| guard.vaults.iter().find(|v| v.id == id).map(|v| &v.provider).ok_or("Pasta de origem ou destino não está aberta.".to_string());
+    find(&workspace)?.move_to(find(&destination_workspace)?, &path, &destination)
+}
+
+#[tauri::command]
 fn delete_file(state: State<AppState>, path: String, workspace: Option<String>) -> Result<()> {
     with_workspace(&state, workspace.as_deref(), |p| p.delete(&path))
 }
@@ -358,7 +365,7 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![open_workspace, remove_workspace, restore_workspace, consume_external_open, list_files, read_file, write_file, create_file, create_directory, rename_file, delete_file, read_asset, search_content, open_external, open_attachment])
+        .invoke_handler(tauri::generate_handler![open_workspace, remove_workspace, restore_workspace, consume_external_open, list_files, read_file, write_file, create_file, create_directory, rename_file, move_entry, delete_file, read_asset, search_content, open_external, open_attachment])
         .run(tauri::generate_context!()).expect("Falha ao iniciar MarkVault");
 }
 
