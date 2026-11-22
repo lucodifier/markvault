@@ -1,10 +1,10 @@
-# Continuidade — MarkVault 0.4.0
+# Continuidade — MarkVault 0.5.0
 
 Registro de estado atualizado em **22/11/2026**.
 
 ## Estado da versão
 
-Versão **0.4.0** estável, validada (lint, Vitest, build e testes Rust) e distribuída como instalador NSIS na página de releases do GitHub. Decisão do autor: a versão atual está boa; **não alterar código sem nova demanda**.
+Versão **0.5.0** estável, validada (lint, Vitest, build e testes Rust) e distribuída como instalador NSIS na página de releases do GitHub. Decisão do autor: a versão atual está boa; **não alterar código sem nova demanda**.
 
 Histórico resumido:
 
@@ -12,6 +12,7 @@ Histórico resumido:
 - **0.2.0** — várias pastas abertas, menu de contexto (copiar caminho/link), associação de arquivos `.md`, quebras de linha e diagramas Mermaid.
 - **0.3.0** — URLs no editor ficam sublinhadas e abrem no navegador padrão com Ctrl/Cmd+clique.
 - **0.4.0** — mover arquivos e pastas arrastando na árvore ou por **Mover para…**, inclusive entre workspaces abertos (comando `move_entry`).
+- **0.5.0** — diagramas Mermaid abrem ampliados ao clicar (zoom e arrastar); modo Leitura com tamanho de texto (A−/A+, Ctrl +/−/0) e largura ajustáveis.
 
 O escopo original está em [`prompt.md`](prompt.md). A referência de stack foi o Alethe (somente leitura). Manter React 18, TypeScript, Vite 6, Tauri 2/Rust, Zustand 5, CSS próprio, Lucide, React Markdown/GFM, Radix Dialog e CodeMirror 6.
 
@@ -21,7 +22,6 @@ O escopo original está em [`prompt.md`](prompt.md). A referência de stack foi 
 - Abertura de arquivo `.md` ou pasta pelo sistema (associação do instalador e argumento de linha de comando).
 - Árvore de diretórios, criar/renomear/excluir com confirmação, sidebar redimensionável e menu de contexto.
 - Editor CodeMirror, Preview, Leitura e modo Dividido; URLs clicáveis com Ctrl/Cmd+clique.
-- **0.4.0** — mover arquivos e pastas arrastando na árvore ou por **Mover para…**, inclusive entre workspaces abertos (comando `move_entry`).
 - Preview com GFM, quebras de linha, diagramas Mermaid, imagens locais/HTTPS e links entre notas.
 - Busca por nome/caminho (sem acentos) e no conteúdo; atalhos Ctrl+P, Ctrl+Shift+F, Ctrl+N, Ctrl+S, Ctrl+\.
 - Persistência direta em `.md` UTF-8, autosave de 700 ms, escrita atômica com revisão SHA-256 e cache de rascunhos.
@@ -36,7 +36,7 @@ O escopo original está em [`prompt.md`](prompt.md). A referência de stack foi 
 | `src/components/App.tsx` | Layout, toolbar, modos, conflitos e atalhos |
 | `src/components/MarkdownEditor.tsx` | CodeMirror, links clicáveis e bloqueio de edição |
 | `src/components/MarkdownPreview.tsx` | Markdown, imagens, links e quebras de linha |
-| `src/components/MermaidDiagram.tsx` | Renderização de diagramas Mermaid |
+| `src/components/MermaidDiagram.tsx` | Mermaid, com visualizador ampliado (zoom/arrastar) |
 | `src/components/FileTree.tsx` | Árvore, workspaces e menu de contexto |
 | `src/components/MoveDialog.tsx` | Escolha de pasta de destino ao mover |
 | `src/components/ActionDialog.tsx` | Criação, renomeação, exclusão e cópia |
