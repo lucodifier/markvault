@@ -187,7 +187,7 @@ export function makeWorkspaceStore(provider: StorageProvider) {
       async initialize() {
         try {
           const session = await provider.restoreWorkspace()
-          if (session && session.workspaces.length) await applySession(session, true)
+          if (session && (session.workspaces.length || session.initialFile)) await applySession(session, true)
         } catch (e) { fail(e) } finally { set({ busy: false }) }
       },
       async openWorkspace() {

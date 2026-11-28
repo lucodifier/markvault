@@ -14,6 +14,7 @@ struct Vault {
     name: String,
     provider: LocalFilesystemProvider,
     _watcher: notify::RecommendedWatcher,
+    ephemeral: bool,
 }
 #[derive(Default)]
 struct InnerState {
@@ -75,12 +76,18 @@ where I: IntoIterator<Item = S>, S: AsRef<str> {
         if trimmed.is_empty() || trimmed.starts_with('-') { None } else { Some(PathBuf::from(trimmed)) }
     })
 }
-fn resolve_launch_target(target: &Path, preferred_roots: &[PathBuf]) -> Result<(PathBuf, Option<String>)> {
+enum LaunchTarget {
+    Folder(PathBuf),
+    WorkspaceFile { root: PathBuf, relative: String },
+    StandaloneFile { parent: PathBuf, name: String },
+}
+
+fn resolve_launch_target(target: &Path, preferred_roots: &[PathBuf]) -> Result<LaunchTarget> {
     let meta = fs::symlink_metadata(target).map_err(|e| e.to_string())?;
     check_not_link(&meta)?;
     let canonical = target.canonicalize().map_err(|e| e.to_string())?;
     if canonical.is_dir() {
-        return Ok((canonical, None));
+        return Ok(LaunchTarget::Folder(canonical));
     }
     if canonical.is_file() {
         let ext = canonical.extension().unwrap_or_default().to_string_lossy().to_lowercase();
@@ -103,13 +110,13 @@ fn resolve_launch_target(target: &Path, preferred_roots: &[PathBuf]) -> Result<(
             }
         }
         if let Some((_, root, relative)) = best {
-            return Ok((root, Some(relative)));
+            return Ok(LaunchTarget::WorkspaceFile { root, relative });
         }
         let parent = canonical.parent().ok_or("Não foi possível determinar a pasta do arquivo.")?.to_path_buf();
         let name = canonical.file_name().ok_or("Nome de arquivo inválido.")?.to_string_lossy().into_owned();
         let provider = LocalFilesystemProvider::new(&parent)?;
         provider.resolve(&name, true)?;
-        return Ok((provider.root, Some(name)));
+        return Ok(LaunchTarget::StandaloneFile { parent: provider.root, name });
     }
     Err("Caminho selecionado não é uma pasta nem um documento .md.".into())
 }
@@ -142,7 +149,7 @@ fn load_saved_workspaces(app: &tauri::AppHandle) -> SavedWorkspaces {
 }
 fn persist_workspaces(app: &tauri::AppHandle, state: &InnerState) {
     let saved = SavedWorkspaces {
-        folders: state.vaults.iter().map(|v| v.id.clone()).collect(),
+        folders: state.vaults.iter().filter(|v| !v.ephemeral).map(|v| v.id.clone()).collect(),
         active: state.active_workspace.clone(),
     };
     if let Ok(file) = workspaces_file(app) {
@@ -157,17 +164,25 @@ fn persist_workspaces(app: &tauri::AppHandle, state: &InnerState) {
     }
 }
 fn snapshot_session(guard: &InnerState, initial_file: Option<InitialFile>) -> WorkspaceSession {
+    let persistent_workspaces: Vec<Workspace> = guard.vaults.iter()
+        .filter(|v| !v.ephemeral)
+        .map(|v| Workspace { name: v.name.clone(), path: v.id.clone() })
+        .collect();
+    let active_path = guard.active_workspace.clone().or_else(|| persistent_workspaces.first().map(|v| v.path.clone()));
     WorkspaceSession {
-        workspaces: guard.vaults.iter().map(|v| Workspace { name: v.name.clone(), path: v.id.clone() }).collect(),
-        active_path: guard.active_workspace.clone().or_else(|| guard.vaults.first().map(|v| v.id.clone())),
+        workspaces: persistent_workspaces,
+        active_path,
         initial_file,
     }
 }
-fn attach_vault(app: &tauri::AppHandle, guard: &mut InnerState, path: &Path) -> Result<String> {
+fn attach_vault(app: &tauri::AppHandle, guard: &mut InnerState, path: &Path, ephemeral: bool) -> Result<String> {
     let provider = LocalFilesystemProvider::new(path)?;
     let root = provider.root.clone();
     let id = display_path(&root);
-    if guard.vaults.iter().any(|v| v.provider.root == root) {
+    if let Some(existing) = guard.vaults.iter_mut().find(|v| v.provider.root == root) {
+        if !ephemeral {
+            existing.ephemeral = false;
+        }
         guard.active_workspace = Some(id.clone());
         return Ok(id);
     }
@@ -182,7 +197,7 @@ fn attach_vault(app: &tauri::AppHandle, guard: &mut InnerState, path: &Path) -> 
         }
     }).map_err(|e| e.to_string())?;
     watcher.watch(&root, RecursiveMode::Recursive).map_err(|e| e.to_string())?;
-    guard.vaults.push(Vault { id: id.clone(), name, provider, _watcher: watcher });
+    guard.vaults.push(Vault { id: id.clone(), name, provider, _watcher: watcher, ephemeral });
     guard.active_workspace = Some(id.clone());
     Ok(id)
 }
@@ -192,6 +207,7 @@ fn with_workspace<T>(state: &AppState, workspace: Option<&str>, f: impl FnOnce(&
         Some(id) => guard.vaults.iter().find(|v| v.id == id),
         None => guard.active_workspace.as_deref()
             .and_then(|id| guard.vaults.iter().find(|v| v.id == id))
+            .or_else(|| guard.vaults.iter().find(|v| !v.ephemeral))
             .or_else(|| guard.vaults.first()),
     }.ok_or("Abra uma pasta primeiro.")?;
     f(&vault.provider)
@@ -203,7 +219,7 @@ async fn open_workspace(app: tauri::AppHandle, state: State<'_, AppState>) -> Re
     let Some(picked) = picked else { return Ok(None) };
     let path = picked.into_path().map_err(|e| e.to_string())?;
     let mut guard = state.0.lock().map_err(|e| e.to_string())?;
-    attach_vault(&app, &mut guard, &path)?;
+    attach_vault(&app, &mut guard, &path, false)?;
     persist_workspaces(&app, &guard);
     Ok(Some(snapshot_session(&guard, None)))
 }
@@ -212,7 +228,7 @@ fn remove_workspace(app: tauri::AppHandle, state: State<AppState>, workspace: St
     let mut guard = state.0.lock().map_err(|e| e.to_string())?;
     guard.vaults.retain(|v| v.id != workspace);
     if guard.active_workspace.as_deref() == Some(workspace.as_str()) {
-        guard.active_workspace = guard.vaults.first().map(|v| v.id.clone());
+        guard.active_workspace = guard.vaults.iter().find(|v| !v.ephemeral).map(|v| v.id.clone());
     }
     persist_workspaces(&app, &guard);
     Ok(snapshot_session(&guard, None))
@@ -222,22 +238,32 @@ fn restore_workspace(app: tauri::AppHandle, state: State<AppState>) -> Result<Wo
     let saved = load_saved_workspaces(&app);
     let mut guard = state.0.lock().map_err(|e| e.to_string())?;
     for folder in &saved.folders {
-        let _ = attach_vault(&app, &mut guard, Path::new(folder));
+        let _ = attach_vault(&app, &mut guard, Path::new(folder), false);
     }
     if let Some(active) = saved.active {
-        if guard.vaults.iter().any(|v| v.id == active) {
+        if guard.vaults.iter().any(|v| v.id == active && !v.ephemeral) {
             guard.active_workspace = Some(active);
         }
     }
     let mut initial_file = None;
     if let Some(target) = guard.pending_open.take() {
-        let roots: Vec<PathBuf> = guard.vaults.iter().map(|v| v.provider.root.clone()).collect();
-        let (root, file) = resolve_launch_target(&target, &roots)?;
-        let ws_id = attach_vault(&app, &mut guard, &root)?;
-        if let Some(rel) = file {
-            initial_file = Some(InitialFile { workspace_path: ws_id, path: rel });
+        let roots: Vec<PathBuf> = guard.vaults.iter().filter(|v| !v.ephemeral).map(|v| v.provider.root.clone()).collect();
+        match resolve_launch_target(&target, &roots)? {
+            LaunchTarget::Folder(folder) => {
+                attach_vault(&app, &mut guard, &folder, false)?;
+                persist_workspaces(&app, &guard);
+            }
+            LaunchTarget::WorkspaceFile { root, relative } => {
+                let ws_id = attach_vault(&app, &mut guard, &root, false)?;
+                initial_file = Some(InitialFile { workspace_path: ws_id, path: relative });
+                persist_workspaces(&app, &guard);
+            }
+            LaunchTarget::StandaloneFile { parent, name } => {
+                let ws_id = attach_vault(&app, &mut guard, &parent, true)?;
+                initial_file = Some(InitialFile { workspace_path: ws_id, path: name });
+                // Do not persist ephemeral vault to workspaces.json!
+            }
         }
-        persist_workspaces(&app, &guard);
     }
     Ok(snapshot_session(&guard, initial_file))
 }
@@ -245,11 +271,24 @@ fn restore_workspace(app: tauri::AppHandle, state: State<AppState>) -> Result<Wo
 fn consume_external_open(app: tauri::AppHandle, state: State<AppState>) -> Result<Option<WorkspaceSession>> {
     let mut guard = state.0.lock().map_err(|e| e.to_string())?;
     let Some(target) = guard.pending_open.take() else { return Ok(None) };
-    let roots: Vec<PathBuf> = guard.vaults.iter().map(|v| v.provider.root.clone()).collect();
-    let (root, file) = resolve_launch_target(&target, &roots)?;
-    let ws_id = attach_vault(&app, &mut guard, &root)?;
-    persist_workspaces(&app, &guard);
-    let initial_file = file.map(|rel| InitialFile { workspace_path: ws_id, path: rel });
+    let roots: Vec<PathBuf> = guard.vaults.iter().filter(|v| !v.ephemeral).map(|v| v.provider.root.clone()).collect();
+    let initial_file = match resolve_launch_target(&target, &roots)? {
+        LaunchTarget::Folder(folder) => {
+            attach_vault(&app, &mut guard, &folder, false)?;
+            persist_workspaces(&app, &guard);
+            None
+        }
+        LaunchTarget::WorkspaceFile { root, relative } => {
+            let ws_id = attach_vault(&app, &mut guard, &root, false)?;
+            persist_workspaces(&app, &guard);
+            Some(InitialFile { workspace_path: ws_id, path: relative })
+        }
+        LaunchTarget::StandaloneFile { parent, name } => {
+            let ws_id = attach_vault(&app, &mut guard, &parent, true)?;
+            // Do not persist ephemeral vault to workspaces.json!
+            Some(InitialFile { workspace_path: ws_id, path: name })
+        }
+    };
     Ok(Some(snapshot_session(&guard, initial_file)))
 }
 #[tauri::command]
@@ -404,17 +443,26 @@ mod tests {
         let txt = sub.join("outro.txt");
         fs::write(&txt, "texto").unwrap();
 
-        let (root, file) = resolve_launch_target(&sub, &[]).unwrap();
-        assert_eq!(root, sub.canonicalize().unwrap());
-        assert_eq!(file, None);
+        match resolve_launch_target(&sub, &[]).unwrap() {
+            LaunchTarget::Folder(folder) => assert_eq!(folder, sub.canonicalize().unwrap()),
+            _ => panic!("Expected Folder target"),
+        }
 
-        let (root, file) = resolve_launch_target(&note, &[]).unwrap();
-        assert_eq!(root, sub.canonicalize().unwrap());
-        assert_eq!(file.as_deref(), Some("ideia.md"));
+        match resolve_launch_target(&note, &[]).unwrap() {
+            LaunchTarget::StandaloneFile { parent, name } => {
+                assert_eq!(parent, sub.canonicalize().unwrap());
+                assert_eq!(name, "ideia.md");
+            }
+            _ => panic!("Expected StandaloneFile target"),
+        }
 
-        let (root, file) = resolve_launch_target(&note, &[dir.path().to_path_buf()]).unwrap();
-        assert_eq!(root, dir.path().canonicalize().unwrap());
-        assert_eq!(file.as_deref(), Some("Projetos/ideia.md"));
+        match resolve_launch_target(&note, &[dir.path().to_path_buf()]).unwrap() {
+            LaunchTarget::WorkspaceFile { root, relative } => {
+                assert_eq!(root, dir.path().canonicalize().unwrap());
+                assert_eq!(relative, "Projetos/ideia.md");
+            }
+            _ => panic!("Expected WorkspaceFile target"),
+        }
 
         assert!(resolve_launch_target(&txt, &[]).is_err());
     }

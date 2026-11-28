@@ -1,6 +1,6 @@
 # Especificação: Abertura de Arquivo Markdown Isolado (Standalone) sem Adicionar Pasta ao Workspace
 
-**Status:** planejada  
+**Status:** executada  
 **Data:** 2026-11-28  
 **Autor:** Antigravity  
 **Versão:** 1.0  

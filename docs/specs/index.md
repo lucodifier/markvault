@@ -15,5 +15,5 @@
 
 | ID                                                                          | Título                                                                                     | Status    | Data       |
 | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | --------- | ---------- |
-| [`spec-standalone-markdown-file`](./spec-standalone-markdown-file.md)       | Abertura de Arquivo Markdown Isolado (Standalone) sem Adicionar Pasta ao Workspace          | planejada | 2026-11-28 |
+| [`spec-standalone-markdown-file`](./spec-standalone-markdown-file.md)       | Abertura de Arquivo Markdown Isolado (Standalone) sem Adicionar Pasta ao Workspace          | executada | 2026-11-28 |
 | [`spec-auto-release-desktop`](./spec-auto-release-desktop.md)               | Automação de Release e Geração do Executável Desktop via GitHub Actions                    | executada | 2026-11-28 |
