@@ -201,4 +201,24 @@ describe('workspace lifecycle', () => {
     expect(provider.filesByRoot.get('/docs')?.get('guia.md')).toBe('# Guia')
     expect(store.getState().document).toBeNull()
   })
+  it('opens a standalone markdown file when no workspaces are opened', async () => {
+    const provider = new TestProvider()
+    provider.workspaces = []
+    provider.activePath = undefined
+    provider.filesByRoot.set('/standalone/dir', new Map([['avulso.md', '# Avulso']]))
+    provider.initialFile = { workspacePath: '/standalone/dir', path: 'avulso.md' }
+
+    const store = makeWorkspaceStore(provider)
+    await store.getState().initialize()
+
+    expect(store.getState().workspaces).toHaveLength(0)
+    expect(store.getState().document?.path).toBe('avulso.md')
+    expect(store.getState().document?.workspacePath).toBe('/standalone/dir')
+    expect(store.getState().document?.content).toBe('# Avulso')
+
+    // Editing and saving standalone file persists changes safely
+    store.getState().edit('# Avulso editado')
+    expect(await store.getState().save()).toBe(true)
+    expect(provider.filesByRoot.get('/standalone/dir')?.get('avulso.md')).toBe('# Avulso editado')
+  })
 })
